@@ -11,5 +11,6 @@ data class Weather(
     val windGust: Double,
     val clouds: Int,
     val date: Long,
-    val timezone: Int
+    val timezone: Int,
+    val city: String
 )

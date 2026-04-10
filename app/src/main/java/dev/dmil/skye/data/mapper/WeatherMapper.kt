@@ -15,6 +15,7 @@ fun CurrentWeatherDto.toWeather(): Weather {
         windGust = this.wind.gust,
         clouds = this.clouds.all,
         date = this.dt,
-        timezone = this.timezone
+        timezone = this.timezone,
+        city = this.cityName
     )
 }
