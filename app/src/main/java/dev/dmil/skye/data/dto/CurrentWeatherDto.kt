@@ -12,5 +12,6 @@ data class CurrentWeatherDto(
     val timezone: Int,
     @SerializedName("id")
     val cityId: Int,
-    val name: String
+    @SerializedName("name")
+    val cityName: String
 )
