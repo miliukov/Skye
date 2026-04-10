@@ -1,4 +1,4 @@
-package dev.dmil.skye
+package dev.dmil.skye.presentation
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,7 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import dev.dmil.skye.ui.theme.SkyeTheme
+import dev.dmil.skye.presentation.ui.theme.SkyeTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
