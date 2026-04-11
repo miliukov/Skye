@@ -8,6 +8,8 @@ sealed class WeatherUiState {
 
     data class Success(val weather: Weather): WeatherUiState()
 
+    data class Refreshing(val weather: Weather): WeatherUiState()
+
     data class Error(val error: String): WeatherUiState()
 
 }

@@ -21,19 +21,44 @@ class WeatherViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
     val uiState = _uiState.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow<String>("")
+    val searchQuery = _searchQuery.asStateFlow()
+
+    private val _searchError = MutableStateFlow("")
+    val searchError = _searchError.asStateFlow()
+
     init {
         getWeather("London")
     }
 
+    fun onSearchQueryChange(newValue: String) {
+        _searchQuery.value = newValue
+    }
+
+    fun onSearch() {
+        getWeather(_searchQuery.value)
+    }
+
     fun getWeather(city: String) {
-        _uiState.value = WeatherUiState.Loading
+        if (_uiState.value is WeatherUiState.Success) {
+            _uiState.value = WeatherUiState.Refreshing(weather = (_uiState.value as WeatherUiState.Success).weather)
+        } else _uiState.value = WeatherUiState.Loading
+
         viewModelScope.launch {
             getWeatherUseCase(city).fold(
                 onSuccess = { weather ->
                     _uiState.value = WeatherUiState.Success(weather)
+                    _searchError.value = ""
                 },
                 onFailure = { e ->
-                    Log.e("WeatherViewModel", e.message ?: "Unknown error")
+                    if (_uiState.value is WeatherUiState.Refreshing) {
+                        _searchError.value = "Ошибка в названии города"
+                        val weather = (_uiState.value as WeatherUiState.Refreshing).weather
+                        _uiState.value = WeatherUiState.Success(weather)
+                        Log.e("WeatherViewModel.getWeather", e.message ?: "Error")
+                        return@fold
+                    }
+                    Log.e("WeatherViewModel.getWeather", e.message ?: "Unknown error")
                     when(e) {
                         is HttpException -> {
                             _uiState.value = WeatherUiState.Error("Ошибка сервера")
