@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -18,7 +20,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import dev.dmil.skye.domain.model.GeocodingResult
 import dev.dmil.skye.domain.model.Weather
 import dev.dmil.skye.presentation.state.WeatherUiState
 import dev.dmil.skye.presentation.viewmodel.WeatherViewModel
@@ -32,6 +36,7 @@ fun WeatherScreen(
     val uiState = viewModel.uiState.collectAsState()
     val searchQuery = viewModel.searchQuery.collectAsState()
     val searchError = viewModel.searchError.collectAsState()
+    val searchResult = viewModel.searchResult.collectAsState()
 
     Box(modifier = modifier) {
         when(val state = uiState.value) {
@@ -44,7 +49,10 @@ fun WeatherScreen(
                     searchQuery = searchQuery.value,
                     onSearchQueryChange = viewModel::onSearchQueryChange,
                     onSearch = viewModel::onSearch,
-                    searchError = searchError.value
+                    onDismissSearch = viewModel::onDismissSearch,
+                    onDropdownMenuItemClick = viewModel::onDropdownMenuItemClick,
+                    searchError = searchError.value,
+                    searchResult = searchResult.value
                 )
             }
             is WeatherUiState.Refreshing -> {
@@ -54,7 +62,10 @@ fun WeatherScreen(
                         searchQuery = searchQuery.value,
                         onSearchQueryChange = viewModel::onSearchQueryChange,
                         onSearch = viewModel::onSearch,
-                        searchError = searchError.value
+                        onDismissSearch = viewModel::onDismissSearch,
+                        onDropdownMenuItemClick = viewModel::onDropdownMenuItemClick,
+                        searchError = searchError.value,
+                        searchResult = searchResult.value
                     )
                     Box(
                         modifier = Modifier
@@ -86,25 +97,45 @@ fun WeatherContent(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
-    searchError: String
+    onDismissSearch: () -> Unit,
+    onDropdownMenuItemClick: (GeocodingResult) -> Unit,
+    searchError: String,
+    searchResult: List<GeocodingResult>
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        TextField(
-            value = searchQuery,
-            onValueChange = { onSearchQueryChange(it) },
-            maxLines = 1,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Search
-            ),
-            keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-            isError = searchError.isNotBlank(),
-            supportingText = { Text(text = searchError) }
-        )
+        Box {
+            TextField(
+                value = searchQuery,
+                onValueChange = { onSearchQueryChange(it) },
+                maxLines = 1,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Search
+                ),
+                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                isError = searchError.isNotBlank(),
+                supportingText = { Text(text = searchError) }
+            )
+            DropdownMenu(
+                expanded = searchResult.isNotEmpty(),
+                onDismissRequest = { onDismissSearch() },
+                properties = PopupProperties(focusable = false)
+            ) {
+                searchResult.forEach {
+                    DropdownMenuItem(
+                        text = {
+                            Text(text = "${it.city} ${it.state} ${it.countryCode}")
+                        },
+                        onClick = { onDropdownMenuItemClick(it) }
+                    )
+                }
+            }
+        }
+
         Text(
             text = weather.city
         )
