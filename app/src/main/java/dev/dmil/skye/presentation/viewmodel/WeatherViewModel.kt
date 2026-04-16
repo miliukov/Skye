@@ -1,8 +1,13 @@
 package dev.dmil.skye.presentation.viewmodel
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.util.Log
+import androidx.annotation.RequiresPermission
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.Priority
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.dmil.skye.domain.model.GeocodingResult
 import dev.dmil.skye.domain.usecase.GetCitySuggestionsUseCase
@@ -20,7 +25,8 @@ import javax.inject.Inject
 @HiltViewModel
 class WeatherViewModel @Inject constructor(
     private val getWeatherUseCase: GetWeatherUseCase,
-    private val getCitySuggestionsUseCase: GetCitySuggestionsUseCase
+    private val getCitySuggestionsUseCase: GetCitySuggestionsUseCase,
+    private val fusedLocationProviderClient: FusedLocationProviderClient
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
@@ -36,7 +42,6 @@ class WeatherViewModel @Inject constructor(
     val searchResult = _searchResult.asStateFlow()
 
     init {
-        getWeather(10.0, 10.0)
         viewModelScope.launch {
             @OptIn(kotlinx.coroutines.FlowPreview::class)
             _searchQuery
@@ -53,6 +58,33 @@ class WeatherViewModel @Inject constructor(
                     )
                 }
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun onLocationPermissionResult(isGranted: Boolean) {
+        Log.d("WeatherViewModel", "Permission granted: $isGranted")
+        if (isGranted) getCurrentLocation()
+        else _uiState.value = WeatherUiState.Error("Отсутствует разрешение геолокации")
+    }
+
+    @RequiresPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+    fun getCurrentLocation() {
+        Log.d("WeatherViewModel", "Requesting location...")
+        fusedLocationProviderClient.getCurrentLocation(
+            Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+            null
+        )
+            .addOnSuccessListener { location ->
+                location ?: return@addOnSuccessListener
+                Log.d("WeatherViewModel", "Location: $location")
+                getWeather(
+                    lat = location.latitude,
+                    lon = location.longitude
+                )
+            }
+            .addOnFailureListener { e ->
+                Log.e("WeatherViewModel.getCurrentLocation", e.message ?: "Unknown error")
+            }
     }
 
     fun onDropdownMenuItemClick(geocodingResult: GeocodingResult) {
