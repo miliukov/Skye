@@ -6,6 +6,7 @@ import dev.dmil.skye.data.remote.WeatherApi
 import dev.dmil.skye.domain.model.GeocodingResult
 import dev.dmil.skye.domain.model.Weather
 import dev.dmil.skye.domain.repository.WeatherRepository
+import java.util.Locale
 import javax.inject.Inject
 
 class WeatherRepositoryImpl @Inject constructor(
@@ -14,7 +15,12 @@ class WeatherRepositoryImpl @Inject constructor(
 
     override suspend fun getWeatherForCoordinates(lat: Double, lon: Double): Result<Weather> {
         return try {
-            Result.success(api.getWeather(lat, lon).toWeather())
+            Result.success(api.getWeather(
+                lat = lat,
+                lon = lon,
+                lang = Locale.getDefault().language,
+                units = "metric"
+            ).toWeather())
         } catch (e: Exception) {
             Result.failure(e)
         }
