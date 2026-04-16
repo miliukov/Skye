@@ -6,8 +6,8 @@ import javax.inject.Inject
 
 class GetWeatherUseCase @Inject constructor(private val weatherRepository: WeatherRepository) {
 
-    suspend operator fun invoke(city: String): Result<Weather> {
-        return weatherRepository.getWeatherForCity(city)
+    suspend operator fun invoke(lat: Double, lon: Double): Result<Weather> {
+        return weatherRepository.getWeatherForCoordinates(lat, lon)
     }
 
 }

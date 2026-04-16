@@ -1,7 +1,9 @@
 package dev.dmil.skye.data.repository
 
+import dev.dmil.skye.data.mapper.toGeocodingResult
 import dev.dmil.skye.data.mapper.toWeather
 import dev.dmil.skye.data.remote.WeatherApi
+import dev.dmil.skye.domain.model.GeocodingResult
 import dev.dmil.skye.domain.model.Weather
 import dev.dmil.skye.domain.repository.WeatherRepository
 import javax.inject.Inject
@@ -10,9 +12,17 @@ class WeatherRepositoryImpl @Inject constructor(
     private val api: WeatherApi
 ) : WeatherRepository {
 
-    override suspend fun getWeatherForCity(city: String): Result<Weather> {
+    override suspend fun getWeatherForCoordinates(lat: Double, lon: Double): Result<Weather> {
         return try {
-            Result.success(api.getWeather(city).toWeather())
+            Result.success(api.getWeather(lat, lon).toWeather())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getLocationByName(query: String): Result<List<GeocodingResult>> {
+        return try {
+            Result.success(api.searchCity(query).map { it.toGeocodingResult() })
         } catch (e: Exception) {
             Result.failure(e)
         }
