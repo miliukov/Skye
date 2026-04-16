@@ -1,5 +1,8 @@
 package dev.dmil.skye.presentation.screen
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +16,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +41,16 @@ fun WeatherScreen(
     val searchQuery = viewModel.searchQuery.collectAsState()
     val searchError = viewModel.searchError.collectAsState()
     val searchResult = viewModel.searchResult.collectAsState()
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        viewModel.onLocationPermissionResult(isGranted)
+    }
+
+    LaunchedEffect(Unit) {
+        launcher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+    }
 
     Box(modifier = modifier) {
         when(val state = uiState.value) {
