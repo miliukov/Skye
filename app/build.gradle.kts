@@ -79,4 +79,8 @@ dependencies {
     implementation(libs.converter.gson)
 
     implementation(libs.play.services.location)
+
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.ktx)
 }
