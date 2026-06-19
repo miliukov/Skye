@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class WeatherViewModel @Inject constructor(
@@ -46,7 +47,7 @@ class WeatherViewModel @Inject constructor(
             @OptIn(kotlinx.coroutines.FlowPreview::class)
             _searchQuery
                 .filter { it.length >= 2 }
-                .debounce(500)
+                .debounce(500.milliseconds)
                 .collect { query ->
                     getCitySuggestionsUseCase(query = query).fold(
                         onSuccess = { list ->
@@ -68,7 +69,7 @@ class WeatherViewModel @Inject constructor(
     }
 
     @RequiresPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
-    fun getCurrentLocation() {
+    fun getCurrentLocation() { // TODO: fix the location requester
         Log.d("WeatherViewModel", "Requesting location...")
         fusedLocationProviderClient.getCurrentLocation(
             Priority.PRIORITY_BALANCED_POWER_ACCURACY,
