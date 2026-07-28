@@ -1,6 +1,7 @@
 package dev.dmil.skye.domain.model
 
 data class Weather(
+    val id: Int,
     val temperature: Double,
     val conditions: String,
     val description: String,
@@ -12,5 +13,5 @@ data class Weather(
     val clouds: Int,
     val date: Long,
     val timezone: Int,
-    val city: String
+    val city: String?
 )

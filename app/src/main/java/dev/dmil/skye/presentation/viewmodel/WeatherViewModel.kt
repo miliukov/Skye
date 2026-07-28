@@ -10,9 +10,14 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.dmil.skye.domain.model.GeocodingResult
+import dev.dmil.skye.domain.model.Weather
 import dev.dmil.skye.domain.usecase.GetCitySuggestionsUseCase
+import dev.dmil.skye.domain.usecase.GetForecastUseCase
 import dev.dmil.skye.domain.usecase.GetWeatherUseCase
+import dev.dmil.skye.presentation.screen.unixToHour
 import dev.dmil.skye.presentation.state.WeatherUiState
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
@@ -26,6 +31,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @HiltViewModel
 class WeatherViewModel @Inject constructor(
     private val getWeatherUseCase: GetWeatherUseCase,
+    private val getForecastUseCase: GetForecastUseCase,
     private val getCitySuggestionsUseCase: GetCitySuggestionsUseCase,
     private val fusedLocationProviderClient: FusedLocationProviderClient
 ) : ViewModel() {
@@ -111,38 +117,47 @@ class WeatherViewModel @Inject constructor(
 
     fun getWeather(lat: Double, lon: Double) {
         if (_uiState.value is WeatherUiState.Success) {
-            _uiState.value = WeatherUiState.Refreshing(weather = (_uiState.value as WeatherUiState.Success).weather)
+            _uiState.value = WeatherUiState.Refreshing(
+                weather = (_uiState.value as WeatherUiState.Success).weather,
+                forecast = (_uiState.value as WeatherUiState.Success).forecast
+            )
         } else _uiState.value = WeatherUiState.Loading
 
         viewModelScope.launch {
-            getWeatherUseCase(lat, lon).fold(
-                onSuccess = { weather ->
-                    _uiState.value = WeatherUiState.Success(weather)
-                    _searchError.value = ""
-                },
-                onFailure = { e ->
-                    if (_uiState.value is WeatherUiState.Refreshing) {
-                        _searchError.value = "Ошибка в названии города"
-                        val weather = (_uiState.value as WeatherUiState.Refreshing).weather
-                        _uiState.value = WeatherUiState.Success(weather)
-                        Log.e("WeatherViewModel.getWeather", e.message ?: "Error")
-                        return@fold
-                    }
-                    Log.e("WeatherViewModel.getWeather", e.message ?: "Unknown error")
-                    when(e) {
-                        is HttpException -> {
-                            _uiState.value = WeatherUiState.Error("Ошибка сервера")
-                        }
-                        is IOException -> {
-                            _uiState.value = WeatherUiState.Error("Отсутствует подключение к интернету")
-                        }
-                        else -> {
-                            _uiState.value = WeatherUiState.Error("Ошибка. Попробуйте позднее")
-                        }
-                    }
+            val weatherResult: Result<Weather>
+            val forecastResult: Result<List<Weather>>
+            coroutineScope {
+                val weatherDeferred = async { getWeatherUseCase(lat, lon) }
+                val forecastDeferred = async { getForecastUseCase(lat, lon) }
+                weatherResult = weatherDeferred.await()
+                forecastResult = forecastDeferred.await()
+            }
+
+            if (weatherResult.isSuccess) {
+                val weather = weatherResult.getOrNull()!!
+                val forecast = forecastResult.getOrNull() ?: emptyList()
+
+                val filtered = forecast.filter { it.date >= System.currentTimeMillis() / 1000 }
+                Log.d("Forecast", "now=${System.currentTimeMillis() / 1000}, first=${filtered.firstOrNull()?.date}, hour=${filtered.firstOrNull()?.let { unixToHour(it.date, weather.timezone) }}")
+
+                _uiState.value = WeatherUiState.Success(weather, filtered)
+                _searchError.value = ""
+            } else {
+                val e = weatherResult.exceptionOrNull()
+                if (_uiState.value is WeatherUiState.Refreshing) {
+                    _searchError.value = "Ошибка в названии города"
+                    val refreshing = _uiState.value as WeatherUiState.Refreshing
+                    _uiState.value = WeatherUiState.Success(refreshing.weather, refreshing.forecast)
+                    Log.e("WeatherViewModel.getWeather", e?.message ?: "Error")
+                    return@launch
                 }
-            )
+                Log.e("WeatherViewModel.getWeather", e?.message ?: "Unknown error")
+                when (e) {
+                    is HttpException -> _uiState.value = WeatherUiState.Error("Ошибка сервера")
+                    is IOException -> _uiState.value = WeatherUiState.Error("Отсутствует подключение к интернету")
+                    else -> _uiState.value = WeatherUiState.Error("Ошибка. Попробуйте позднее")
+                }
+            }
         }
     }
-
 }

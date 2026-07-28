@@ -1,5 +1,5 @@
 [versions]
-agp = "9.1.0"
+agp = "9.2.1"
 converterGson = "3.0.0"
 coreKtx = "1.18.0"
 gson = "2.13.2"

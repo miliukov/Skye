@@ -10,6 +10,11 @@ interface WeatherRepository {
         lon: Double
     ): Result<Weather>
 
+    suspend fun getForecastForCoordinates(
+        lat: Double,
+        lon: Double
+    ): Result<List<Weather>>
+
     suspend fun getLocationByName(query: String): Result<List<GeocodingResult>>
 
 }

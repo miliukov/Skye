@@ -2,6 +2,7 @@ package dev.dmil.skye.data.remote
 
 import dev.dmil.skye.BuildConfig
 import dev.dmil.skye.data.dto.CurrentWeatherDto
+import dev.dmil.skye.data.dto.ForecastResponseDto
 import dev.dmil.skye.data.dto.GeocodingDto
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -24,4 +25,12 @@ interface WeatherApi {
         @Query("appid") apiKey: String = BuildConfig.WEATHER_API_KEY
     ): List<GeocodingDto>
 
+    @GET("data/2.5/forecast")
+    suspend fun getHourlyForecast(
+        @Query("lat") lat: Double,
+        @Query("lon") lon: Double,
+        @Query("lang") lang: String,
+        @Query("units") units: String,
+        @Query("appid") apiKey: String = BuildConfig.WEATHER_API_KEY
+    ): ForecastResponseDto
 }

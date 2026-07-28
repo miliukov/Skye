@@ -1,16 +1,23 @@
 package dev.dmil.skye.presentation.screen
 
 import android.Manifest
+import android.util.Log
+import android.util.Log.w
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,6 +75,7 @@ fun WeatherScreen(
             is WeatherUiState.Success -> {
                 WeatherContent(
                     weather = state.weather,
+                    forecast = state.forecast,
                     searchQuery = searchQuery.value,
                     onSearchQueryChange = viewModel::onSearchQueryChange,
                     onSearch = viewModel::onSearch,
@@ -81,6 +89,7 @@ fun WeatherScreen(
                 Box {
                     WeatherContent(
                         weather = state.weather,
+                        forecast = state.forecast,
                         searchQuery = searchQuery.value,
                         onSearchQueryChange = viewModel::onSearchQueryChange,
                         onSearch = viewModel::onSearch,
@@ -116,6 +125,7 @@ fun LoadingContent() {
 @Composable
 fun WeatherContent(
     weather: Weather,
+    forecast: List<Weather>,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
@@ -125,28 +135,19 @@ fun WeatherContent(
     searchResult: List<GeocodingResult>
 ) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 15.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(200.dp))
-            Icon(
-                painter = painterResource(R.drawable.wi_day_sunny),
-                contentDescription = "sunny icon",
-                modifier = Modifier.size(150.dp),
-                tint = Orange
-            )
-            Text(
-                text = weather.city,
-                fontSize = 20.sp
-            )
-            Text(
-                text = "${weather.temperature}º"
-            )
-        }
+        Header(
+            city = weather.city!!,
+            temp = weather.temperature.toInt(),
+            iconId = weather.icon
+        )
+        ForecastCarousel(
+            weather = weather,
+            forecast = forecast
+        )
 //        Box { // TODO: Search
 //            TextField(
 //                value = searchQuery,
@@ -175,12 +176,62 @@ fun WeatherContent(
 //                }
 //            }
 //        }
-        Text(
-            text = weather.conditions
+    }
+}
+
+@Composable
+fun Header(city: String, temp: Int, iconId: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(120.dp))
+        Icon(
+            painter = painterResource(getCorrectConditionIcon(iconId)),
+            contentDescription = "weather icon",
+            modifier = Modifier.size(130.dp),
+            tint = Color.Unspecified
         )
         Text(
-            text = weather.description
+            text = city,
+            fontSize = 40.sp
         )
+        Text(
+            text = "${temp}º", // TODO: make Celsius symbol not centered
+            fontSize = 80.sp
+        )
+        Text(
+            text = iconId
+        )
+    }
+}
+
+@Composable
+fun ForecastCarousel(weather: Weather, forecast: List<Weather>) {
+    val hourly = listOf(weather) + forecast
+    Log.d("Carousel", "hourly size=${hourly.size}, forecast size=${forecast.size}")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        hourly.forEachIndexed { index, w ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = if (index == 0) "Now" else "${unixToHour(w.date, w.timezone)}",
+                    fontSize = 15.sp
+                )
+                Icon(
+                    painter = painterResource(getCorrectConditionIcon(w.icon)),
+                    contentDescription = "",
+                    modifier = Modifier.size(40.dp)
+                )
+                Text(
+                    text = "${w.temperature.toInt()}º",
+                    fontSize = 20.sp
+                )
+            }
+        }
     }
 }
 
@@ -194,4 +245,22 @@ fun ErrorContent(error: String) {
             text = error
         )
     }
+}
+
+fun getCorrectConditionIcon(id: String): Int {
+    return when (id) {
+        "01d" -> R.drawable.wi_day_sunny
+        "01n" -> R.drawable.wi_night_clear
+        "02d" -> R.drawable.wi_day_cloudy
+        "02n" -> R.drawable.wi_night_cloudy
+        "03d", "03n", "04d", "04n" -> R.drawable.wi_cloudy
+        "10d" -> R.drawable.wi_day_rain
+        else -> R.drawable.wi_na
+    }
+}
+
+fun unixToHour(dt: Long, timezoneOffsetSeconds: Int): Int {
+    val localSeconds = dt + timezoneOffsetSeconds
+    val secondsInDay = localSeconds % 86400
+    return (secondsInDay / 3600).toInt()
 }

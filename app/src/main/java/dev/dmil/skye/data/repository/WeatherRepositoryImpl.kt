@@ -26,6 +26,20 @@ class WeatherRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getForecastForCoordinates(lat: Double, lon: Double): Result<List<Weather>> {
+        return try {
+            val response = api.getHourlyForecast(
+                lat = lat,
+                lon = lon,
+                lang = Locale.getDefault().language,
+                units = "metric"
+            )
+            Result.success(response.list.map { it.toWeather(timezone = response.city.timezone) })
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getLocationByName(query: String): Result<List<GeocodingResult>> {
         return try {
             Result.success(api.searchCity(query).map { it.toGeocodingResult() })
