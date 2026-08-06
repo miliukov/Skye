@@ -10,11 +10,16 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.dmil.skye.domain.model.GeocodingResult
+import dev.dmil.skye.domain.model.SavedCity
 import dev.dmil.skye.domain.model.Weather
+import dev.dmil.skye.domain.usecase.AddSavedCityUseCase
+import dev.dmil.skye.domain.usecase.DeleteSavedCityUseCase
 import dev.dmil.skye.domain.usecase.GetCitySuggestionsUseCase
 import dev.dmil.skye.domain.usecase.GetForecastUseCase
+import dev.dmil.skye.domain.usecase.GetSavedCityUseCase
 import dev.dmil.skye.domain.usecase.GetWeatherUseCase
 import dev.dmil.skye.presentation.screen.unixToHour
+import dev.dmil.skye.presentation.state.CityListItem
 import dev.dmil.skye.presentation.state.WeatherUiState
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -33,6 +38,9 @@ class WeatherViewModel @Inject constructor(
     private val getWeatherUseCase: GetWeatherUseCase,
     private val getForecastUseCase: GetForecastUseCase,
     private val getCitySuggestionsUseCase: GetCitySuggestionsUseCase,
+    private val getSavedCityUseCase: GetSavedCityUseCase,
+    private val addSavedCityUseCase: AddSavedCityUseCase,
+    private val deleteSavedCityUseCase: DeleteSavedCityUseCase,
     private val fusedLocationProviderClient: FusedLocationProviderClient
 ) : ViewModel() {
 
@@ -47,6 +55,13 @@ class WeatherViewModel @Inject constructor(
 
     private val _searchResult = MutableStateFlow<List<GeocodingResult>>(emptyList())
     val searchResult = _searchResult.asStateFlow()
+
+    private val _cities = MutableStateFlow<List<CityListItem>>(emptyList())
+    val cities = _cities.asStateFlow()
+
+    private var currentLocationLat: Double? = null
+    private var currentLocationLon: Double? = null
+    private var currentLocationWeather: Weather? = null
 
     init {
         viewModelScope.launch {
@@ -84,9 +99,15 @@ class WeatherViewModel @Inject constructor(
             .addOnSuccessListener { location ->
                 location ?: return@addOnSuccessListener
                 Log.d("WeatherViewModel", "Location: $location")
+                currentLocationLat = location.latitude
+                currentLocationLon = location.longitude
                 getWeather(
                     lat = location.latitude,
-                    lon = location.longitude
+                    lon = location.longitude,
+                    onWeatherLoaded = { weather ->
+                        currentLocationWeather = weather
+                        refreshCities()
+                    }
                 )
             }
             .addOnFailureListener { e ->
@@ -94,9 +115,36 @@ class WeatherViewModel @Inject constructor(
             }
     }
 
-    fun onDropdownMenuItemClick(geocodingResult: GeocodingResult) {
-        getWeather(geocodingResult.lat, geocodingResult.lon)
+    fun onAddToFavorites(result: GeocodingResult) {
+        val alreadySaved = _cities.value.any {
+            !it.isCurrentLocation && it.lat == result.lat && it.lon == result.lon
+        }
+        if (!alreadySaved) {
+            viewModelScope.launch {
+                val city = SavedCity(
+                    name = result.city,
+                    state = result.state,
+                    countryCode = result.countryCode,
+                    lat = result.lat,
+                    lon = result.lon
+                )
+                addSavedCityUseCase(city)
+                refreshCities()
+            }
+        }
+        _searchQuery.value = ""
         onDismissSearch()
+    }
+
+    fun onDeleteFavorite(city: SavedCity) {
+        viewModelScope.launch {
+            deleteSavedCityUseCase(city)
+            refreshCities()
+        }
+    }
+
+    fun onSelectCity(item: CityListItem) {
+        getWeather(item.lat, item.lon)
     }
 
     fun onDismissSearch() {
@@ -108,14 +156,11 @@ class WeatherViewModel @Inject constructor(
     }
 
     fun onSearch() {
-        if (searchResult.value.isEmpty()) return
-        val lat = _searchResult.value.first().lat
-        val lon = _searchResult.value.first().lon
-        getWeather(lat, lon)
-        onDismissSearch()
+        val first = searchResult.value.firstOrNull() ?: return
+        onAddToFavorites(first)
     }
 
-    fun getWeather(lat: Double, lon: Double) {
+    fun getWeather(lat: Double, lon: Double, onWeatherLoaded: ((Weather) -> Unit)? = null) {
         if (_uiState.value is WeatherUiState.Success) {
             _uiState.value = WeatherUiState.Refreshing(
                 weather = (_uiState.value as WeatherUiState.Success).weather,
@@ -141,6 +186,7 @@ class WeatherViewModel @Inject constructor(
                 Log.d("Forecast", "now=${System.currentTimeMillis() / 1000}, first=${filtered.firstOrNull()?.date}, hour=${filtered.firstOrNull()?.let { unixToHour(it.date, weather.timezone) }}")
 
                 _uiState.value = WeatherUiState.Success(weather, filtered)
+                onWeatherLoaded?.invoke(weather)
                 _searchError.value = ""
             } else {
                 val e = weatherResult.exceptionOrNull()
@@ -158,6 +204,60 @@ class WeatherViewModel @Inject constructor(
                     else -> _uiState.value = WeatherUiState.Error("Ошибка. Попробуйте позднее")
                 }
             }
+        }
+    }
+
+    private fun refreshCities() {
+        viewModelScope.launch {
+            val favorites = getSavedCityUseCase().getOrNull() ?: emptyList()
+
+            val currentLocationItem = if (currentLocationLat != null && currentLocationLon != null) {
+                listOf(
+                    CityListItem(
+                        name = currentLocationWeather?.city ?: "…",
+                        countryCode = "",
+                        lat = currentLocationLat!!,
+                        lon = currentLocationLon!!,
+                        isCurrentLocation = true,
+                        temperature = currentLocationWeather?.temperature?.toInt(),
+                        icon = currentLocationWeather?.icon
+                    )
+                )
+            } else emptyList()
+
+            val favoriteItems = favorites.map { city ->
+                CityListItem(
+                    name = city.name,
+                    state = city.state,
+                    countryCode = city.countryCode,
+                    lat = city.lat,
+                    lon = city.lon,
+                    isCurrentLocation = false,
+                    savedCity = city
+                )
+            }
+
+            _cities.value = currentLocationItem + favoriteItems
+
+            _cities.value.filter { it.temperature == null }.forEach { item ->
+                launch {
+                    getWeatherUseCase(item.lat, item.lon).onSuccess { weather ->
+                        updateCityWeather(item.lat, item.lon, weather)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateCityWeather(lat: Double, lon: Double, weather: Weather) {
+        _cities.value = _cities.value.map { item ->
+            if (item.lat == lat && item.lon == lon) {
+                item.copy(
+                    name = if (item.isCurrentLocation) weather.city ?: item.name else item.name,
+                    temperature = weather.temperature.toInt(),
+                    icon = weather.icon
+                )
+            } else item
         }
     }
 }

@@ -2,10 +2,17 @@ package dev.dmil.skye.presentation.screen
 
 import android.Manifest
 import android.util.Log
-import android.util.Log.w
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,10 +30,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -35,9 +44,14 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -62,6 +76,11 @@ fun WeatherScreen(
 ) {
 
     val uiState = viewModel.uiState.collectAsState()
+    var showCities by remember { mutableStateOf(false) }
+    val cities = viewModel.cities.collectAsState()
+    BackHandler(enabled = showCities) {
+        showCities = false
+    }
     val searchQuery = viewModel.searchQuery.collectAsState()
     val searchError = viewModel.searchError.collectAsState()
     val searchResult = viewModel.searchResult.collectAsState()
@@ -77,46 +96,74 @@ fun WeatherScreen(
     }
 
     Box(modifier = modifier) {
-        when(val state = uiState.value) {
-            WeatherUiState.Loading -> {
-                LoadingContent()
-            }
-            is WeatherUiState.Success -> {
-                WeatherContent(
-                    weather = state.weather,
-                    forecast = state.forecast,
-                    searchQuery = searchQuery.value,
-                    onSearchQueryChange = viewModel::onSearchQueryChange,
-                    onSearch = viewModel::onSearch,
-                    onDismissSearch = viewModel::onDismissSearch,
-                    onDropdownMenuItemClick = viewModel::onDropdownMenuItemClick,
-                    searchError = searchError.value,
-                    searchResult = searchResult.value
-                )
-            }
-            is WeatherUiState.Refreshing -> {
-                Box {
-                    WeatherContent(
-                        weather = state.weather,
-                        forecast = state.forecast,
-                        searchQuery = searchQuery.value,
-                        onSearchQueryChange = viewModel::onSearchQueryChange,
-                        onSearch = viewModel::onSearch,
-                        onDismissSearch = viewModel::onDismissSearch,
-                        onDropdownMenuItemClick = viewModel::onDropdownMenuItemClick,
-                        searchError = searchError.value,
-                        searchResult = searchResult.value
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.3f))
-                    )
+        AnimatedVisibility(
+            visible = !showCities,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                when(val state = uiState.value) {
+                    WeatherUiState.Loading -> {
+                        LoadingContent()
+                    }
+                    is WeatherUiState.Success -> {
+                        WeatherContent(
+                            weather = state.weather,
+                            forecast = state.forecast,
+                            onSwipeDownOpenCities = { showCities = true }
+                        )
+                    }
+                    is WeatherUiState.Refreshing -> {
+                        Box {
+                            WeatherContent(
+                                weather = state.weather,
+                                forecast = state.forecast,
+                                onSwipeDownOpenCities = { showCities = true }
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.3f))
+                            )
+                        }
+                    }
+                    is WeatherUiState.Error -> {
+                        ErrorContent(error = state.error)
+                    }
+                }
+                FloatingActionButton(
+                    onClick = { showCities = true },
+                    containerColor = Black,
+                    contentColor = White,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(24.dp)
+                ) {
+                    Icon(imageVector = Icons.Filled.List, contentDescription = "Города")
                 }
             }
-            is WeatherUiState.Error -> {
-                ErrorContent(error = state.error)
-            }
+        }
+
+        AnimatedVisibility(
+            visible = showCities,
+            enter = slideInVertically(tween(250)) { fullHeight -> fullHeight },
+            exit = slideOutVertically(tween(250)) { fullHeight -> fullHeight }
+        ) {
+            CitiesScreen(
+                cities = cities.value,
+                onCityClick = { item ->
+                    viewModel.onSelectCity(item)
+                    showCities = false
+                },
+                onDeleteCity = viewModel::onDeleteFavorite,
+                searchQuery = searchQuery.value,
+                onSearchQueryChange = viewModel::onSearchQueryChange,
+                onSearch = viewModel::onSearch,
+                onDismissSearch = viewModel::onDismissSearch,
+                onAddCity = viewModel::onAddToFavorites,
+                searchError = searchError.value,
+                searchResult = searchResult.value
+            )
         }
     }
 }
@@ -135,44 +182,53 @@ fun LoadingContent() {
 fun WeatherContent(
     weather: Weather,
     forecast: List<Weather>,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit,
-    onSearch: () -> Unit,
-    onDismissSearch: () -> Unit,
-    onDropdownMenuItemClick: (GeocodingResult) -> Unit,
-    searchError: String,
-    searchResult: List<GeocodingResult>
+    onSwipeDownOpenCities: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 15.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 15.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Header(
             city = weather.city!!,
             temp = weather.temperature.toInt(),
-            iconId = weather.icon
+            iconId = weather.icon,
+            onSwipeDown = onSwipeDownOpenCities
         )
         ForecastCarousel(
             weather = weather,
             forecast = forecast
         )
-        CitySearchBar(
-            query = searchQuery,
-            onQueryChange = onSearchQueryChange,
-            onSearch = onSearch,
-            onDismiss = onDismissSearch,
-            onResultClick = onDropdownMenuItemClick,
-            error = searchError,
-            results = searchResult
-        )
     }
 }
 
 @Composable
-fun Header(city: String, temp: Int, iconId: String) {
+fun Header(
+    city: String,
+    temp: Int,
+    iconId: String,
+    onSwipeDown: () -> Unit
+) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                var accumulatedDrag = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { accumulatedDrag = 0f },
+                    onVerticalDrag = { change, dragAmount ->
+                        accumulatedDrag += dragAmount
+                        if (accumulatedDrag > 80f) {
+                            onSwipeDown()
+                            accumulatedDrag = 0f
+                        }
+                        change.consume()
+                    }
+                )
+            }
     ) {
         Spacer(modifier = Modifier.height(120.dp))
         Icon(
