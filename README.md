@@ -30,18 +30,21 @@ A clean, modern Android weather app with GPS location, city search with autocomp
 - [x] Parallel API requests
 - [x] Clean Architecture
 - [x] GPS location detection
-- [x] Hourly forecast carousel
+- [x] Hourly and weekly forecast
+- [x] City search with autocomplete
+- [x] Saved cities screen
+- [x] Saved cities with Room
 
 ### 🚧 In Progress
-- [ ] City search with autocomplete
-- [ ] Saved cities screen
+- [ ] Day detail screen
 
 ### 📋 Planned
-- [ ] Saved cities with Room
+
 - [ ] Dark / Light theme support
 - [ ] Onboarding screen
 - [ ] Widget for home screen
 - [ ] Settings (units, language)
+- [ ] Replace destructive Room migration with a real Migration
 
 ---
 

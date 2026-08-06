@@ -5,6 +5,7 @@ import dev.dmil.skye.domain.model.SavedCity
 
 fun SavedCityEntity.toSavedCity(): SavedCity {
     return SavedCity(
+        id = this.id,
         name = this.name,
         state = this.state,
         countryCode = this.countryCode,
@@ -16,6 +17,7 @@ fun SavedCityEntity.toSavedCity(): SavedCity {
 
 fun SavedCity.toSavedCityEntity(): SavedCityEntity {
     return SavedCityEntity(
+        id = this.id,
         name = this.name,
         state = this.state,
         countryCode = this.countryCode,

@@ -18,6 +18,7 @@ import dev.dmil.skye.domain.usecase.GetCitySuggestionsUseCase
 import dev.dmil.skye.domain.usecase.GetForecastUseCase
 import dev.dmil.skye.domain.usecase.GetSavedCityUseCase
 import dev.dmil.skye.domain.usecase.GetWeatherUseCase
+import dev.dmil.skye.domain.usecase.GetWeeklyForecastUseCase
 import dev.dmil.skye.presentation.screen.unixToHour
 import dev.dmil.skye.presentation.state.CityListItem
 import dev.dmil.skye.presentation.state.WeatherUiState
@@ -37,6 +38,7 @@ import kotlin.time.Duration.Companion.milliseconds
 class WeatherViewModel @Inject constructor(
     private val getWeatherUseCase: GetWeatherUseCase,
     private val getForecastUseCase: GetForecastUseCase,
+    private val getWeeklyForecastUseCase: GetWeeklyForecastUseCase,
     private val getCitySuggestionsUseCase: GetCitySuggestionsUseCase,
     private val getSavedCityUseCase: GetSavedCityUseCase,
     private val addSavedCityUseCase: AddSavedCityUseCase,
@@ -144,7 +146,7 @@ class WeatherViewModel @Inject constructor(
     }
 
     fun onSelectCity(item: CityListItem) {
-        getWeather(item.lat, item.lon)
+        getWeather(item.lat, item.lon, displayName = item.name)
     }
 
     fun onDismissSearch() {
@@ -160,11 +162,13 @@ class WeatherViewModel @Inject constructor(
         onAddToFavorites(first)
     }
 
-    fun getWeather(lat: Double, lon: Double, onWeatherLoaded: ((Weather) -> Unit)? = null) {
+    fun getWeather(lat: Double, lon: Double, displayName: String? = null, onWeatherLoaded: ((Weather) -> Unit)? = null) {
         if (_uiState.value is WeatherUiState.Success) {
+            val current = _uiState.value as WeatherUiState.Success
             _uiState.value = WeatherUiState.Refreshing(
-                weather = (_uiState.value as WeatherUiState.Success).weather,
-                forecast = (_uiState.value as WeatherUiState.Success).forecast
+                weather = current.weather,
+                forecast = current.forecast,
+                weeklyForecast = current.weeklyForecast
             )
         } else _uiState.value = WeatherUiState.Loading
 
@@ -179,13 +183,16 @@ class WeatherViewModel @Inject constructor(
             }
 
             if (weatherResult.isSuccess) {
-                val weather = weatherResult.getOrNull()!!
+                val weather = weatherResult.getOrNull()!!.let { w ->
+                    if (displayName != null) w.copy(city = displayName) else w
+                }
                 val forecast = forecastResult.getOrNull() ?: emptyList()
 
                 val filtered = forecast.filter { it.date >= System.currentTimeMillis() / 1000 }
                 Log.d("Forecast", "now=${System.currentTimeMillis() / 1000}, first=${filtered.firstOrNull()?.date}, hour=${filtered.firstOrNull()?.let { unixToHour(it.date, weather.timezone) }}")
 
-                _uiState.value = WeatherUiState.Success(weather, filtered)
+                val weeklyForecast = getWeeklyForecastUseCase(filtered)
+                _uiState.value = WeatherUiState.Success(weather, filtered, weeklyForecast)
                 onWeatherLoaded?.invoke(weather)
                 _searchError.value = ""
             } else {
@@ -193,7 +200,7 @@ class WeatherViewModel @Inject constructor(
                 if (_uiState.value is WeatherUiState.Refreshing) {
                     _searchError.value = "Ошибка в названии города"
                     val refreshing = _uiState.value as WeatherUiState.Refreshing
-                    _uiState.value = WeatherUiState.Success(refreshing.weather, refreshing.forecast)
+                    _uiState.value = WeatherUiState.Success(refreshing.weather, refreshing.forecast, refreshing.weeklyForecast)
                     Log.e("WeatherViewModel.getWeather", e?.message ?: "Error")
                     return@launch
                 }
@@ -210,6 +217,7 @@ class WeatherViewModel @Inject constructor(
     private fun refreshCities() {
         viewModelScope.launch {
             val favorites = getSavedCityUseCase().getOrNull() ?: emptyList()
+            val previousByCoords = _cities.value.associateBy { "${it.lat}_${it.lon}" }
 
             val currentLocationItem = if (currentLocationLat != null && currentLocationLon != null) {
                 listOf(
@@ -220,12 +228,14 @@ class WeatherViewModel @Inject constructor(
                         lon = currentLocationLon!!,
                         isCurrentLocation = true,
                         temperature = currentLocationWeather?.temperature?.toInt(),
-                        icon = currentLocationWeather?.icon
+                        icon = currentLocationWeather?.icon,
+                        timezone = currentLocationWeather?.timezone
                     )
                 )
             } else emptyList()
 
             val favoriteItems = favorites.map { city ->
+                val previous = previousByCoords["${city.lat}_${city.lon}"]
                 CityListItem(
                     name = city.name,
                     state = city.state,
@@ -233,7 +243,10 @@ class WeatherViewModel @Inject constructor(
                     lat = city.lat,
                     lon = city.lon,
                     isCurrentLocation = false,
-                    savedCity = city
+                    savedCity = city,
+                    temperature = previous?.temperature,
+                    icon = previous?.icon,
+                    timezone = previous?.timezone
                 )
             }
 
@@ -255,7 +268,8 @@ class WeatherViewModel @Inject constructor(
                 item.copy(
                     name = if (item.isCurrentLocation) weather.city ?: item.name else item.name,
                     temperature = weather.temperature.toInt(),
-                    icon = weather.icon
+                    icon = weather.icon,
+                    timezone = weather.timezone
                 )
             } else item
         }
