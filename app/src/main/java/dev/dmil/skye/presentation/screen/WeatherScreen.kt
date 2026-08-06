@@ -18,14 +18,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,7 +49,10 @@ import dev.dmil.skye.R
 import dev.dmil.skye.domain.model.GeocodingResult
 import dev.dmil.skye.domain.model.Weather
 import dev.dmil.skye.presentation.state.WeatherUiState
+import dev.dmil.skye.presentation.ui.theme.Black
+import dev.dmil.skye.presentation.ui.theme.Gray
 import dev.dmil.skye.presentation.ui.theme.Orange
+import dev.dmil.skye.presentation.ui.theme.White
 import dev.dmil.skye.presentation.viewmodel.WeatherViewModel
 
 @Composable
@@ -148,34 +157,15 @@ fun WeatherContent(
             weather = weather,
             forecast = forecast
         )
-//        Box { // TODO: Search
-//            TextField(
-//                value = searchQuery,
-//                onValueChange = { onSearchQueryChange(it) },
-//                maxLines = 1,
-//                keyboardOptions = KeyboardOptions(
-//                    keyboardType = KeyboardType.Text,
-//                    imeAction = ImeAction.Search
-//                ),
-//                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
-//                isError = searchError.isNotBlank(),
-//                supportingText = { Text(text = searchError) }
-//            )
-//            DropdownMenu(
-//                expanded = searchResult.isNotEmpty(),
-//                onDismissRequest = { onDismissSearch() },
-//                properties = PopupProperties(focusable = false)
-//            ) {
-//                searchResult.forEach {
-//                    DropdownMenuItem(
-//                        text = {
-//                            Text(text = "${it.city} ${it.state} ${it.countryCode}")
-//                        },
-//                        onClick = { onDropdownMenuItemClick(it) }
-//                    )
-//                }
-//            }
-//        }
+        CitySearchBar(
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+            onSearch = onSearch,
+            onDismiss = onDismissSearch,
+            onResultClick = onDropdownMenuItemClick,
+            error = searchError,
+            results = searchResult
+        )
     }
 }
 
@@ -202,6 +192,76 @@ fun Header(city: String, temp: Int, iconId: String) {
         Text(
             text = iconId
         )
+    }
+}
+
+@Composable
+fun CitySearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onDismiss: () -> Unit,
+    onResultClick: (GeocodingResult) -> Unit,
+    error: String,
+    results: List<GeocodingResult>
+) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        TextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Поиск города", color = Gray) },
+            singleLine = true,
+            leadingIcon = {
+                Icon(imageVector = Icons.Filled.Search, contentDescription = null, tint = Gray)
+            },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange(""); onDismiss() }) {
+                        Icon(imageVector = Icons.Filled.Clear, contentDescription = "Очистить", tint = Gray)
+                    }
+                }
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Search
+            ),
+            keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            isError = error.isNotBlank(),
+            supportingText = {
+                if (error.isNotBlank()) Text(text = error, color = Orange)
+            },
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedIndicatorColor = Orange,
+                unfocusedIndicatorColor = Gray.copy(alpha = 0.4f),
+                cursorColor = Orange,
+                focusedTextColor = Black,
+                unfocusedTextColor = Black
+            )
+        )
+
+        DropdownMenu(
+            expanded = results.isNotEmpty(),
+            onDismissRequest = onDismiss,
+            properties = PopupProperties(focusable = false),
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .background(White, RoundedCornerShape(12.dp))
+        ) {
+            results.forEach { result ->
+                val subtitle = listOfNotNull(result.state, result.countryCode)
+                    .filter { it.isNotBlank() }
+                    .joinToString(", ")
+                DropdownMenuItem(
+                    text = {
+                        Text(text = if (subtitle.isBlank()) result.city else "${result.city}, $subtitle")
+                    },
+                    onClick = { onResultClick(result) }
+                )
+            }
+        }
     }
 }
 

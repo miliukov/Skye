@@ -12,5 +12,7 @@ data class SavedCityEntity(
     val state: String? = null,
     @ColumnInfo(name = "country_code")
     val countryCode: String,
+    val lat: Double,
+    val lon: Double,
     val tag: String? = null
 )

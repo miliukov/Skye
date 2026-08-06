@@ -8,6 +8,8 @@ fun SavedCityEntity.toSavedCity(): SavedCity {
         name = this.name,
         state = this.state,
         countryCode = this.countryCode,
+        lat = this.lat,
+        lon = this.lon,
         tag = this.tag
     )
 }
@@ -17,6 +19,8 @@ fun SavedCity.toSavedCityEntity(): SavedCityEntity {
         name = this.name,
         state = this.state,
         countryCode = this.countryCode,
+        lat = this.lat,
+        lon = this.lon,
         tag = this.tag
     )
 }

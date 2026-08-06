@@ -26,6 +26,8 @@ object DatabaseModule {
         context,
         SkyeDatabase::class.java,
         "skye-database"
-    ).build()
+    )
+        .fallbackToDestructiveMigration(dropAllTables = true) // TODO: Migration
+        .build()
 
 }
