@@ -22,6 +22,20 @@ class SettingsViewModel @Inject constructor(
     val units = settingsRepository.units
         .stateIn(viewModelScope, SharingStarted.Eagerly, Units.METRIC)
 
+    val apiKey = settingsRepository.apiKey
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val apiKeySetAt = settingsRepository.apiKeySetAt
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setApiKey(key: String?) {
+        viewModelScope.launch { settingsRepository.setApiKey(key) }
+    }
+
+    suspend fun setApiKeyAwait(key: String?) {
+        settingsRepository.setApiKey(key)
+    }
+
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     }

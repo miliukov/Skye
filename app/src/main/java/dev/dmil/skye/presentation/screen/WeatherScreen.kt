@@ -242,12 +242,32 @@ fun WeatherScreen(
             }
         }
     }
+
+    val apiKey = settingsViewModel.apiKey.collectAsState()
+    val apiKeySetAt = settingsViewModel.apiKeySetAt.collectAsState()
+
     SettingsOverlay(
         visible = showSettings,
         themeMode = themeMode.value,
         units = units.value,
+        apiKey = apiKey.value,
+        apiKeySetAt = apiKeySetAt.value,
         onThemeModeSelected = settingsViewModel::setThemeMode,
         onUnitsSelected = settingsViewModel::setUnits,
+        onApiKeyChanged = { key ->
+            if (key == null) {
+                settingsViewModel.setApiKeyAwait(null)
+                viewModel.refreshAfterKeyChange()
+                Result.success(Unit)
+            } else {
+                val testResult = viewModel.testApiKey(key)
+                if (testResult.isSuccess) {
+                    settingsViewModel.setApiKeyAwait(key)
+                    viewModel.refreshAfterKeyChange()
+                }
+                testResult
+            }
+        },
         onDismiss = { showSettings = false }
     )
 }

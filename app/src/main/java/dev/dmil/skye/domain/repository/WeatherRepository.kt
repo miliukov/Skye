@@ -17,4 +17,6 @@ interface WeatherRepository {
 
     suspend fun getLocationByName(query: String): Result<List<GeocodingResult>>
 
+    suspend fun testApiKey(key: String, lat: Double, lon: Double): Result<Unit>
+
 }

@@ -19,6 +19,7 @@ import dev.dmil.skye.domain.usecase.GetForecastUseCase
 import dev.dmil.skye.domain.usecase.GetSavedCityUseCase
 import dev.dmil.skye.domain.usecase.GetWeatherUseCase
 import dev.dmil.skye.domain.usecase.GetWeeklyForecastUseCase
+import dev.dmil.skye.domain.usecase.TestApiKeyUseCase
 import dev.dmil.skye.presentation.screen.unixToHour
 import dev.dmil.skye.presentation.state.CityListItem
 import dev.dmil.skye.presentation.state.WeatherUiState
@@ -43,7 +44,8 @@ class WeatherViewModel @Inject constructor(
     private val getSavedCityUseCase: GetSavedCityUseCase,
     private val addSavedCityUseCase: AddSavedCityUseCase,
     private val deleteSavedCityUseCase: DeleteSavedCityUseCase,
-    private val fusedLocationProviderClient: FusedLocationProviderClient
+    private val fusedLocationProviderClient: FusedLocationProviderClient,
+    private val testApiKeyUseCase: TestApiKeyUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
@@ -212,6 +214,23 @@ class WeatherViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    suspend fun testApiKey(key: String): Result<Unit> {
+        val lat = currentLocationLat
+        val lon = currentLocationLon
+        if (lat == null || lon == null) {
+            return Result.failure(IllegalStateException("Location not available yet"))
+        }
+        return testApiKeyUseCase(key, lat, lon)
+    }
+
+    fun refreshAfterKeyChange() {
+        val lat = currentLocationLat
+        val lon = currentLocationLon
+        if (lat == null || lon == null) return
+        getWeather(lat, lon)
+        refreshCities()
     }
 
     private fun refreshCities() {
