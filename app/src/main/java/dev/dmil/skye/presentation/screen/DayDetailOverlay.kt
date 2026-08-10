@@ -43,11 +43,14 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.dmil.skye.domain.model.DailyForecast
+import dev.dmil.skye.domain.model.Units
 import dev.dmil.skye.domain.model.Weather
 import dev.dmil.skye.presentation.ui.theme.Black
 import dev.dmil.skye.presentation.ui.theme.Gray
 import dev.dmil.skye.presentation.ui.theme.Orange
 import dev.dmil.skye.presentation.ui.theme.White
+import dev.dmil.skye.presentation.util.formatTemperature
+import dev.dmil.skye.presentation.util.formatWindSpeed
 import java.util.Locale
 import java.time.format.TextStyle as DateTextStyle
 import kotlin.collections.mapIndexed
@@ -59,6 +62,7 @@ fun DayDetailOverlay(
     selectedIndex: Int,
     onDaySelected: (Int) -> Unit,
     onDismiss: () -> Unit,
+    units: Units,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -126,8 +130,8 @@ fun DayDetailOverlay(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(text = "${day.maxTemp}º", fontSize = 60.sp, color = White)
-                    Text(text = "${day.minTemp}º", fontSize = 50.sp, color = Gray)
+                    Text(text = formatTemperature(day.maxTemp, units), fontSize = 60.sp, color = White)
+                    Text(text = formatTemperature(day.minTemp, units), fontSize = 50.sp, color = Gray)
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -138,9 +142,9 @@ fun DayDetailOverlay(
                         .navigationBarsPadding()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    DayTemperatureGraph(hourly = day.hourly)
+                    DayTemperatureGraph(hourly = day.hourly, units = units)
                     Spacer(modifier = Modifier.height(28.dp))
-                    DayInfoGrid(day = day)
+                    DayInfoGrid(day = day, units = units)
                     Spacer(modifier = Modifier.height(24.dp))
                 }
             }
@@ -188,7 +192,7 @@ private fun DatePill(
 }
 
 @Composable
-fun DayTemperatureGraph(hourly: List<Weather>, modifier: Modifier = Modifier) {
+fun DayTemperatureGraph(hourly: List<Weather>, units: Units, modifier: Modifier = Modifier) {
     if (hourly.size < 2) return
 
     val textMeasurer = rememberTextMeasurer()
@@ -229,7 +233,7 @@ fun DayTemperatureGraph(hourly: List<Weather>, modifier: Modifier = Modifier) {
         points.forEachIndexed { index, point ->
             drawCircle(color = Orange, radius = 4.dp.toPx(), center = point)
 
-            val tempLayout = textMeasurer.measure("${hourly[index].temperature.toInt()}º", tempStyle)
+            val tempLayout = textMeasurer.measure(formatTemperature(hourly[index].temperature, units), tempStyle)
             drawText(
                 textLayoutResult = tempLayout,
                 topLeft = Offset(point.x - tempLayout.size.width / 2f, point.y - tempLayout.size.height - 10.dp.toPx())
@@ -245,12 +249,12 @@ fun DayTemperatureGraph(hourly: List<Weather>, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun DayInfoGrid(day: DailyForecast) {
+private fun DayInfoGrid(day: DailyForecast, units: Units) {
     val items = listOf(
-        "Feels like" to "${day.feelsLike}º",
+        "Feels like" to formatTemperature(day.feelsLike, units),
         "Humidity" to "${day.humidity}%",
         "Pressure" to "${day.pressure} hPa",
-        "Wind" to "${day.windSpeed.toInt()} m/s"
+        "Wind" to formatWindSpeed(day.windSpeed, units)
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

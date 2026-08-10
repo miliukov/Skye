@@ -25,10 +25,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -39,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -47,11 +51,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
 import dev.dmil.skye.domain.model.GeocodingResult
 import dev.dmil.skye.domain.model.SavedCity
+import dev.dmil.skye.domain.model.Units
 import dev.dmil.skye.presentation.state.CityListItem
 import dev.dmil.skye.presentation.ui.theme.Black
 import dev.dmil.skye.presentation.ui.theme.Gray
 import dev.dmil.skye.presentation.ui.theme.Orange
 import dev.dmil.skye.presentation.ui.theme.White
+import dev.dmil.skye.presentation.util.formatTemperature
 
 @Composable
 fun CitiesScreen(
@@ -65,6 +71,8 @@ fun CitiesScreen(
     onAddCity: (GeocodingResult) -> Unit,
     searchError: String,
     searchResult: List<GeocodingResult>,
+    onOpenSettings: () -> Unit,
+    units: Units,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -75,12 +83,25 @@ fun CitiesScreen(
             .padding(horizontal = 24.dp)
             .padding(top = 10.dp, bottom = 20.dp)
     ) {
-        Text(
-            text = "Skye",
-            fontSize = 52.sp,
-            color = Black,
-            letterSpacing = (-2).sp
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Skye",
+                fontSize = 52.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+                letterSpacing = (-2).sp,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onOpenSettings) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(8.dp))
 
         LazyColumn(
@@ -92,7 +113,8 @@ fun CitiesScreen(
                 CityRow(
                     item = city,
                     onClick = { onCityClick(city) },
-                    onDelete = { city.savedCity?.let(onDeleteCity) }
+                    onDelete = { city.savedCity?.let(onDeleteCity) },
+                    units = units
                 )
             }
         }
@@ -115,7 +137,8 @@ fun CitiesScreen(
 private fun CityRow(
     item: CityListItem,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    units: Units
 ) {
     val isNight = item.icon?.endsWith("n") == true
     val bg = if (isNight) Black else White
@@ -123,7 +146,7 @@ private fun CityRow(
     val shape = RoundedCornerShape(10.dp)
 
     if (item.isCurrentLocation) {
-        CityCardContent(item, bg, fg, shape, onClick)
+        CityCardContent(item, bg, fg, shape, onClick, units)
     } else {
         val dismissState = rememberSwipeToDismissBoxState()
 
@@ -138,7 +161,7 @@ private fun CityRow(
             enableDismissFromStartToEnd = false,
             backgroundContent = { DeleteBackground(shape) }
         ) {
-            CityCardContent(item, bg, fg, shape, onClick)
+            CityCardContent(item, bg, fg, shape, onClick, units)
         }
     }
 }
@@ -149,14 +172,15 @@ private fun CityCardContent(
     bg: androidx.compose.ui.graphics.Color,
     fg: androidx.compose.ui.graphics.Color,
     shape: RoundedCornerShape,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    units: Units
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
             .background(bg)
-            .border(2.dp, Black, shape)
+            .border(2.dp, fg, shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -190,7 +214,7 @@ private fun CityCardContent(
                 modifier = Modifier.size(48.dp)
             )
             Spacer(modifier = Modifier.size(14.dp))
-            Text(text = "${item.temperature}º", fontSize = 36.sp, color = fg)
+            Text(text = formatTemperature(item.temperature, units), fontSize = 36.sp, color = fg)
         } else {
             CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),
@@ -212,12 +236,13 @@ fun CitySearchBar(
     results: List<GeocodingResult>
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        val onBackground = MaterialTheme.colorScheme.onBackground
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(White)
-                .border(2.dp, Black, RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.background)
+                .border(2.dp, onBackground, RoundedCornerShape(14.dp))
         ) {
             BasicTextField(
                 value = query,
@@ -226,7 +251,7 @@ fun CitySearchBar(
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp, vertical = 10.dp),
                 singleLine = true,
-                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp, color = Black),
+                textStyle = TextStyle(fontSize = 18.sp, color = onBackground),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Orange),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,

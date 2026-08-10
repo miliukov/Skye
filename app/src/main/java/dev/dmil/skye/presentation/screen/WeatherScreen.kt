@@ -45,6 +45,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalView
@@ -69,10 +71,14 @@ import androidx.core.view.WindowCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import dev.dmil.skye.R
 import dev.dmil.skye.domain.model.DailyForecast
+import dev.dmil.skye.domain.model.Units
 import dev.dmil.skye.domain.model.Weather
 import dev.dmil.skye.presentation.state.WeatherUiState
-import dev.dmil.skye.presentation.ui.theme.Black
 import dev.dmil.skye.presentation.ui.theme.Gray
+import dev.dmil.skye.presentation.ui.theme.White
+import dev.dmil.skye.presentation.util.formatTemperature
+import dev.dmil.skye.presentation.util.formatWindSpeed
+import dev.dmil.skye.presentation.viewmodel.SettingsViewModel
 import dev.dmil.skye.presentation.viewmodel.WeatherViewModel
 import kotlin.collections.forEachIndexed
 import kotlin.collections.lastIndex
@@ -92,13 +98,23 @@ fun WeatherScreen(
     var selectedDayIndex by remember { mutableStateOf(0) }
     var showDayDetail by remember { mutableStateOf(false) }
 
+    val settingsViewModel: SettingsViewModel = hiltViewModel()
+    val themeMode = settingsViewModel.themeMode.collectAsState()
+    val units = settingsViewModel.units.collectAsState()
+    var showSettings by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = showSettings) {
+        showSettings = false
+    }
+
     val view = LocalView.current
+    val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.5f
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !showDayDetail
-                isAppearanceLightNavigationBars = !showDayDetail
+                isAppearanceLightStatusBars = !showDayDetail && !isDarkBackground
+                isAppearanceLightNavigationBars = !showDayDetail && !isDarkBackground
             }
         }
     }
@@ -117,60 +133,65 @@ fun WeatherScreen(
         launcher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
     }
 
-    AnimatedContent(
-        targetState = showCities,
-        modifier = modifier,
-        transitionSpec = {
-            if (targetState) {
-                (slideInVertically(tween(320, easing = FastOutSlowInEasing)) { it } + fadeIn(tween(320)))
-                    .togetherWith(fadeOut(tween(200)) + scaleOut(targetScale = 0.94f, animationSpec = tween(320)))
-            } else {
-                (fadeIn(tween(280)) + scaleIn(initialScale = 0.94f, animationSpec = tween(320)))
-                    .togetherWith(slideOutVertically(tween(320, easing = FastOutSlowInEasing)) { it } + fadeOut(tween(200)))
-            }.using(SizeTransform(clip = false))
-        },
-        label = "home_cities_transition"
-    ) { citiesVisible ->
-        if (citiesVisible) {
-            CitiesScreen(
-                cities = cities.value,
-                onCityClick = { item ->
-                    viewModel.onSelectCity(item)
-                    showCities = false
-                },
-                onDeleteCity = viewModel::onDeleteFavorite,
-                searchQuery = searchQuery.value,
-                onSearchQueryChange = viewModel::onSearchQueryChange,
-                onSearch = viewModel::onSearch,
-                onDismissSearch = viewModel::onDismissSearch,
-                onAddCity = viewModel::onAddToFavorites,
-                searchError = searchError.value,
-                searchResult = searchResult.value
-            )
-        } else {
-            val weeklyForecastForOverlay = (uiState.value as? WeatherUiState.Success)?.weeklyForecast
-                ?: (uiState.value as? WeatherUiState.Refreshing)?.weeklyForecast
-                ?: emptyList()
-
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (val state = uiState.value) {
-                    WeatherUiState.Loading -> {
-                        LoadingContent()
-                    }
-                    is WeatherUiState.Success -> {
-                        WeatherContent(
-                            weather = state.weather,
-                            forecast = state.forecast,
-                            weeklyForecast = state.weeklyForecast,
-                            onOpenCities = { showCities = true },
-                            onDayClick = { index ->
-                                selectedDayIndex = index
-                                showDayDetail = true
-                            }
+    Box(modifier = modifier.fillMaxSize()) {
+        AnimatedContent(
+            targetState = showCities,
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = {
+                if (targetState) {
+                    (slideInVertically(tween(320, easing = FastOutSlowInEasing)) { it } + fadeIn(
+                        tween(320)
+                    ))
+                        .togetherWith(
+                            fadeOut(tween(200)) + scaleOut(
+                                targetScale = 0.94f,
+                                animationSpec = tween(320)
+                            )
                         )
-                    }
-                    is WeatherUiState.Refreshing -> {
-                        Box {
+                } else {
+                    (fadeIn(tween(280)) + scaleIn(initialScale = 0.94f, animationSpec = tween(320)))
+                        .togetherWith(
+                            slideOutVertically(
+                                tween(
+                                    320,
+                                    easing = FastOutSlowInEasing
+                                )
+                            ) { it } + fadeOut(tween(200)))
+                }.using(SizeTransform(clip = false))
+            },
+            label = "home_cities_transition"
+        ) { citiesVisible ->
+            if (citiesVisible) {
+                CitiesScreen(
+                    cities = cities.value,
+                    onCityClick = { item ->
+                        viewModel.onSelectCity(item)
+                        showCities = false
+                    },
+                    onDeleteCity = viewModel::onDeleteFavorite,
+                    searchQuery = searchQuery.value,
+                    onSearchQueryChange = viewModel::onSearchQueryChange,
+                    onSearch = viewModel::onSearch,
+                    onDismissSearch = viewModel::onDismissSearch,
+                    onAddCity = viewModel::onAddToFavorites,
+                    searchError = searchError.value,
+                    searchResult = searchResult.value,
+                    onOpenSettings = { showSettings = true },
+                    units = units.value
+                )
+            } else {
+                val weeklyForecastForOverlay =
+                    (uiState.value as? WeatherUiState.Success)?.weeklyForecast
+                        ?: (uiState.value as? WeatherUiState.Refreshing)?.weeklyForecast
+                        ?: emptyList()
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (val state = uiState.value) {
+                        WeatherUiState.Loading -> {
+                            LoadingContent()
+                        }
+
+                        is WeatherUiState.Success -> {
                             WeatherContent(
                                 weather = state.weather,
                                 forecast = state.forecast,
@@ -179,30 +200,58 @@ fun WeatherScreen(
                                 onDayClick = { index ->
                                     selectedDayIndex = index
                                     showDayDetail = true
-                                }
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.3f))
+                                },
+                                units = units.value
                             )
                         }
+
+                        is WeatherUiState.Refreshing -> {
+                            Box {
+                                WeatherContent(
+                                    weather = state.weather,
+                                    forecast = state.forecast,
+                                    weeklyForecast = state.weeklyForecast,
+                                    onOpenCities = { showCities = true },
+                                    onDayClick = { index ->
+                                        selectedDayIndex = index
+                                        showDayDetail = true
+                                    },
+                                    units = units.value
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = 0.3f))
+                                )
+                            }
+                        }
+
+                        is WeatherUiState.Error -> {
+                            ErrorContent(error = state.error)
+                        }
                     }
-                    is WeatherUiState.Error -> {
-                        ErrorContent(error = state.error)
-                    }
+                    DayDetailOverlay(
+                        visible = showDayDetail,
+                        days = weeklyForecastForOverlay,
+                        selectedIndex = selectedDayIndex,
+                        onDaySelected = { selectedDayIndex = it },
+                        onDismiss = { showDayDetail = false },
+                        units = units.value
+                    )
                 }
-                DayDetailOverlay(
-                    visible = showDayDetail,
-                    days = weeklyForecastForOverlay,
-                    selectedIndex = selectedDayIndex,
-                    onDaySelected = { selectedDayIndex = it },
-                    onDismiss = { showDayDetail = false }
-                )
             }
         }
     }
+    SettingsOverlay(
+        visible = showSettings,
+        themeMode = themeMode.value,
+        units = units.value,
+        onThemeModeSelected = settingsViewModel::setThemeMode,
+        onUnitsSelected = settingsViewModel::setUnits,
+        onDismiss = { showSettings = false }
+    )
 }
+
 
 @Composable
 fun LoadingContent() {
@@ -220,7 +269,8 @@ fun WeatherContent(
     forecast: List<Weather>,
     weeklyForecast: List<DailyForecast>,
     onOpenCities: () -> Unit,
-    onDayClick: (Int) -> Unit
+    onDayClick: (Int) -> Unit,
+    units: Units
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val maxHeightPx = constraints.maxHeight
@@ -251,12 +301,13 @@ fun WeatherContent(
                     city = weather.city!!,
                     temp = weather.temperature.toInt(),
                     iconId = weather.icon,
-                    onSwipeDown = onOpenCities
+                    onSwipeDown = onOpenCities,
+                    units = units
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                ForecastCarousel(weather = weather, forecast = forecast)
+                ForecastCarousel(weather = weather, forecast = forecast, units = units)
                 Spacer(modifier = Modifier.height(16.dp))
-                WeeklyForecastList(forecast = weeklyForecast, onDayClick = onDayClick)
+                WeeklyForecastList(forecast = weeklyForecast, onDayClick = onDayClick, units = units)
                 Spacer(modifier = Modifier.height(14.dp))
                 IconButton(
                     onClick = onOpenCities,
@@ -282,8 +333,12 @@ fun Header(
     city: String,
     temp: Int,
     iconId: String,
-    onSwipeDown: () -> Unit
+    onSwipeDown: () -> Unit,
+    units: Units
 ) {
+    val onBackground = MaterialTheme.colorScheme.onBackground
+    val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -317,17 +372,20 @@ fun Header(
                     painter = painterResource(getCorrectConditionIcon(icon)),
                     contentDescription = "weather icon",
                     modifier = Modifier.size(130.dp),
-                    tint = Color.Unspecified
+                    tint = weatherIconTint(icon, isDarkBackground)
                 )
-                Text(text = cityName, fontSize = 40.sp)
-                Text(text = "${temperature}º", fontSize = 80.sp) // TODO: make Celsius symbol not centered
+                Text(text = cityName, fontSize = 40.sp, color = onBackground)
+                Text(text = formatTemperature(temperature, units), fontSize = 80.sp, color = onBackground)
             }
         }
     }
 }
 
 @Composable
-fun ForecastCarousel(weather: Weather, forecast: List<Weather>) {
+fun ForecastCarousel(weather: Weather, forecast: List<Weather>, units: Units) {
+    val onBackground = MaterialTheme.colorScheme.onBackground
+    val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
     AnimatedContent(
         targetState = listOf(weather) + forecast,
         transitionSpec = {
@@ -345,16 +403,19 @@ fun ForecastCarousel(weather: Weather, forecast: List<Weather>) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = if (index == 0) "Now" else "${unixToHour(w.date, w.timezone)}",
-                        fontSize = 15.sp
+                        fontSize = 15.sp,
+                        color = onBackground
                     )
                     Icon(
                         painter = painterResource(getCorrectConditionIcon(w.icon)),
                         contentDescription = "",
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(40.dp),
+                        tint = weatherIconTint(w.icon, isDarkBackground)
                     )
                     Text(
-                        text = "${w.temperature.toInt()}º",
-                        fontSize = 20.sp
+                        text = formatTemperature(w.temperature, units),
+                        fontSize = 20.sp,
+                        color = onBackground
                     )
                 }
             }
@@ -363,7 +424,7 @@ fun ForecastCarousel(weather: Weather, forecast: List<Weather>) {
 }
 
 @Composable
-fun WeeklyForecastList(forecast: List<DailyForecast>, onDayClick: (Int) -> Unit) {
+fun WeeklyForecastList(forecast: List<DailyForecast>, onDayClick: (Int) -> Unit, units: Units) {
     AnimatedContent(
         targetState = forecast,
         transitionSpec = {
@@ -377,9 +438,9 @@ fun WeeklyForecastList(forecast: List<DailyForecast>, onDayClick: (Int) -> Unit)
                 .padding(horizontal = 16.dp)
         ) {
             days.forEachIndexed { index, day ->
-                DailyForecastRow(day, onClick = { onDayClick(index) })
+                DailyForecastRow(day, onClick = { onDayClick(index) }, units = units)
                 if (index != days.lastIndex) {
-                    HorizontalDivider(color = Gray.copy(alpha = 0.8f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
                 }
             }
         }
@@ -387,7 +448,10 @@ fun WeeklyForecastList(forecast: List<DailyForecast>, onDayClick: (Int) -> Unit)
 }
 
 @Composable
-private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit) {
+private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit, units: Units) {
+    val onBackground = MaterialTheme.colorScheme.onBackground
+    val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -399,7 +463,7 @@ private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit) {
             text = day.dayLabel,
             fontSize = 22.sp,
             fontWeight = FontWeight.Normal,
-            color = Black,
+            color = onBackground,
             modifier = Modifier.width(78.dp)
         )
         Row(
@@ -411,25 +475,25 @@ private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit) {
                 painter = painterResource(getCorrectConditionIcon(day.icon)),
                 contentDescription = null,
                 modifier = Modifier.size(32.dp),
-                tint = Color.Unspecified
+                tint = weatherIconTint(day.icon, isDarkBackground)
             )
             Text(
-                text = "${day.minTemp}º – ${day.maxTemp}º",
+                text = "${formatTemperature(day.minTemp, units)} – ${formatTemperature(day.maxTemp, units)}",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Normal,
-                color = Black
+                color = onBackground
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
                         .size(30.dp)
-                        .border(1.5.dp, Black, CircleShape),
+                        .border(1.5.dp, onBackground, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Filled.ArrowUpward,
                         contentDescription = null,
-                        tint = Black,
+                        tint = onBackground,
                         modifier = Modifier
                             .size(16.dp)
                             .rotate(day.windDegree.toFloat())
@@ -437,10 +501,10 @@ private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "${day.windSpeed.toInt()} m/s",
+                    text = formatWindSpeed(day.windSpeed, units),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Normal,
-                    color = Black
+                    color = onBackground
                 )
             }
         }
@@ -469,6 +533,11 @@ fun getCorrectConditionIcon(id: String): Int {
         "10d" -> R.drawable.wi_day_rain
         else -> R.drawable.wi_na
     }
+}
+
+fun weatherIconTint(iconId: String, isDarkBackground: Boolean): Color {
+    if (!isDarkBackground) return Color.Unspecified
+    return if (iconId == "01d") Color.Unspecified else White
 }
 
 fun unixToHour(dt: Long, timezoneOffsetSeconds: Int): Int {

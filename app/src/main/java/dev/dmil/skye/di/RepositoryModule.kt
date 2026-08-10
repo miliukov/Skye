@@ -5,8 +5,10 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.dmil.skye.data.repository.SavedCityRepositoryImpl
+import dev.dmil.skye.data.repository.SettingsRepositoryImpl
 import dev.dmil.skye.data.repository.WeatherRepositoryImpl
 import dev.dmil.skye.domain.repository.SavedCityRepository
+import dev.dmil.skye.domain.repository.SettingsRepository
 import dev.dmil.skye.domain.repository.WeatherRepository
 import javax.inject.Singleton
 
@@ -21,5 +23,9 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindSavedCityRepository(impl: SavedCityRepositoryImpl): SavedCityRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
 
 }

@@ -35,13 +35,13 @@ A clean, modern Android weather app with GPS location, city search with autocomp
 - [x] Saved cities screen
 - [x] Saved cities with Room
 - [x] Day detail screen
+- [x] Dark / Light theme support
+- [x] Settings (units)
 
 ### 🚧 In Progress
-- [ ] Dark / Light theme support
-- [ ] Settings (units, language)
+- [ ] Settings (language)
 
 ### 📋 Planned
-
 - [ ] Onboarding screen
 - [ ] Widget for home screen
 - [ ] Replace destructive Room migration with a real Migration
