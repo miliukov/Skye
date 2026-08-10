@@ -18,9 +18,11 @@ class GetWeeklyForecastUseCase @Inject constructor() {
         return forecast
             .groupBy { localEpochDay(it) }
             .toSortedMap()
-            .map { (epochDay, dayEntries) ->
+            .map { (epochDay, dayEntriesUnsorted) ->
+                val dayEntries = dayEntriesUnsorted.sortedBy { it.date }
                 val representative = dayEntries.minByOrNull { abs(localHour(it) - 12) } ?: dayEntries.first()
                 DailyForecast(
+                    date = LocalDate.ofEpochDay(epochDay),
                     dayLabel = if (epochDay == today) {
                         "Today"
                     } else {
@@ -30,7 +32,12 @@ class GetWeeklyForecastUseCase @Inject constructor() {
                     minTemp = dayEntries.minOf { it.temperature.toInt() },
                     maxTemp = dayEntries.maxOf { it.temperature.toInt() },
                     windSpeed = representative.windSpeed,
-                    windDegree = representative.windDegree
+                    windDegree = representative.windDegree,
+                    feelsLike = representative.feelsLike.toInt(),
+                    humidity = representative.humidity.toInt(),
+                    pressure = representative.pressure.toInt(),
+                    description = representative.description.replaceFirstChar { it.uppercase() },
+                    hourly = dayEntries
                 )
             }
     }

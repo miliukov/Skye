@@ -1,6 +1,7 @@
 package dev.dmil.skye.presentation.screen
 
 import android.Manifest
+import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +18,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -28,8 +30,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -44,6 +48,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,10 +60,12 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import dev.dmil.skye.R
 import dev.dmil.skye.domain.model.DailyForecast
@@ -82,6 +89,20 @@ fun WeatherScreen(
     BackHandler(enabled = showCities) {
         showCities = false
     }
+    var selectedDayIndex by remember { mutableStateOf(0) }
+    var showDayDetail by remember { mutableStateOf(false) }
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !showDayDetail
+                isAppearanceLightNavigationBars = !showDayDetail
+            }
+        }
+    }
+
     val searchQuery = viewModel.searchQuery.collectAsState()
     val searchError = viewModel.searchError.collectAsState()
     val searchResult = viewModel.searchResult.collectAsState()
@@ -127,6 +148,10 @@ fun WeatherScreen(
                 searchResult = searchResult.value
             )
         } else {
+            val weeklyForecastForOverlay = (uiState.value as? WeatherUiState.Success)?.weeklyForecast
+                ?: (uiState.value as? WeatherUiState.Refreshing)?.weeklyForecast
+                ?: emptyList()
+
             Box(modifier = Modifier.fillMaxSize()) {
                 when (val state = uiState.value) {
                     WeatherUiState.Loading -> {
@@ -137,7 +162,11 @@ fun WeatherScreen(
                             weather = state.weather,
                             forecast = state.forecast,
                             weeklyForecast = state.weeklyForecast,
-                            onOpenCities = { showCities = true }
+                            onOpenCities = { showCities = true },
+                            onDayClick = { index ->
+                                selectedDayIndex = index
+                                showDayDetail = true
+                            }
                         )
                     }
                     is WeatherUiState.Refreshing -> {
@@ -146,7 +175,11 @@ fun WeatherScreen(
                                 weather = state.weather,
                                 forecast = state.forecast,
                                 weeklyForecast = state.weeklyForecast,
-                                onOpenCities = { showCities = true }
+                                onOpenCities = { showCities = true },
+                                onDayClick = { index ->
+                                    selectedDayIndex = index
+                                    showDayDetail = true
+                                }
                             )
                             Box(
                                 modifier = Modifier
@@ -159,6 +192,13 @@ fun WeatherScreen(
                         ErrorContent(error = state.error)
                     }
                 }
+                DayDetailOverlay(
+                    visible = showDayDetail,
+                    days = weeklyForecastForOverlay,
+                    selectedIndex = selectedDayIndex,
+                    onDaySelected = { selectedDayIndex = it },
+                    onDismiss = { showDayDetail = false }
+                )
             }
         }
     }
@@ -179,7 +219,8 @@ fun WeatherContent(
     weather: Weather,
     forecast: List<Weather>,
     weeklyForecast: List<DailyForecast>,
-    onOpenCities: () -> Unit
+    onOpenCities: () -> Unit,
+    onDayClick: (Int) -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val maxHeightPx = constraints.maxHeight
@@ -190,6 +231,8 @@ fun WeatherContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(horizontal = 15.dp)
                 .then(if (needsScroll) Modifier.verticalScroll(scrollState) else Modifier),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -213,7 +256,7 @@ fun WeatherContent(
                 Spacer(modifier = Modifier.height(12.dp))
                 ForecastCarousel(weather = weather, forecast = forecast)
                 Spacer(modifier = Modifier.height(16.dp))
-                WeeklyForecastList(forecast = weeklyForecast)
+                WeeklyForecastList(forecast = weeklyForecast, onDayClick = onDayClick)
                 Spacer(modifier = Modifier.height(14.dp))
                 IconButton(
                     onClick = onOpenCities,
@@ -320,7 +363,7 @@ fun ForecastCarousel(weather: Weather, forecast: List<Weather>) {
 }
 
 @Composable
-fun WeeklyForecastList(forecast: List<DailyForecast>) {
+fun WeeklyForecastList(forecast: List<DailyForecast>, onDayClick: (Int) -> Unit) {
     AnimatedContent(
         targetState = forecast,
         transitionSpec = {
@@ -334,7 +377,7 @@ fun WeeklyForecastList(forecast: List<DailyForecast>) {
                 .padding(horizontal = 16.dp)
         ) {
             days.forEachIndexed { index, day ->
-                DailyForecastRow(day)
+                DailyForecastRow(day, onClick = { onDayClick(index) })
                 if (index != days.lastIndex) {
                     HorizontalDivider(color = Gray.copy(alpha = 0.8f))
                 }
@@ -344,10 +387,11 @@ fun WeeklyForecastList(forecast: List<DailyForecast>) {
 }
 
 @Composable
-private fun DailyForecastRow(day: DailyForecast) {
+private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
