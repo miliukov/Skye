@@ -93,6 +93,33 @@ fun WeatherScreen(
     viewModel: WeatherViewModel = hiltViewModel()
 ) {
 
+    val settingsViewModel: SettingsViewModel = hiltViewModel()
+    val hasCompletedOnboarding = settingsViewModel.hasCompletedOnboarding.collectAsState()
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        viewModel.onLocationPermissionResult(isGranted)
+    }
+
+    LaunchedEffect(hasCompletedOnboarding.value) {
+        if (hasCompletedOnboarding.value == true) {
+            launcher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+    }
+
+    when (hasCompletedOnboarding.value) {
+        null -> return
+        false -> {
+            OnboardingScreen(
+                onLocationRequested = { settingsViewModel.setOnboardingCompleted() },
+                modifier = modifier
+            )
+            return
+        }
+        true -> Unit
+    }
+
     val uiState = viewModel.uiState.collectAsState()
     var showCities by remember { mutableStateOf(false) }
     val cities = viewModel.cities.collectAsState()
@@ -102,7 +129,6 @@ fun WeatherScreen(
     var selectedDayIndex by remember { mutableStateOf(0) }
     var showDayDetail by remember { mutableStateOf(false) }
 
-    val settingsViewModel: SettingsViewModel = hiltViewModel()
     val themeMode = settingsViewModel.themeMode.collectAsState()
     val units = settingsViewModel.units.collectAsState()
     var showSettings by remember { mutableStateOf(false) }
@@ -126,16 +152,6 @@ fun WeatherScreen(
     val searchQuery = viewModel.searchQuery.collectAsState()
     val searchError = viewModel.searchError.collectAsState()
     val searchResult = viewModel.searchResult.collectAsState()
-
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        viewModel.onLocationPermissionResult(isGranted)
-    }
-
-    LaunchedEffect(Unit) {
-        launcher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-    }
 
     Box(modifier = modifier.fillMaxSize()) {
         AnimatedContent(

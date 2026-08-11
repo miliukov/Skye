@@ -37,12 +37,12 @@ A clean, modern Android weather app with GPS location, city search with autocomp
 - [x] Day detail screen
 - [x] Dark / Light theme support
 - [x] Settings (units, RU/EN language support)
+- [x] Onboarding screen
 
 ### 🚧 In Progress
-- [ ] Onboarding screen
+- [ ] Widget for home screen
 
 ### 📋 Planned
-- [ ] Widget for home screen
 - [ ] Replace destructive Room migration with a real Migration
 
 ---

@@ -11,6 +11,8 @@ interface SettingsRepository {
     val apiKey: Flow<String?>
     val apiKeySetAt: Flow<Long?>
     val language: Flow<Language>
+    val hasCompletedOnboarding: Flow<Boolean>
+    suspend fun setOnboardingCompleted()
     suspend fun setLanguage(language: Language)
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setUnits(units: Units)

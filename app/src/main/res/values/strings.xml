@@ -47,4 +47,10 @@
     <string name="day_today">Today</string>
     <string name="unit_meters_per_second">m/s</string>
     <string name="unit_hectopascal">hPa</string>
+
+    <string name="onboarding_welcome_subtitle">Fast, lightweight, and open source – built with privacy in mind.</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_location_title">Location, kept private</string>
+    <string name="onboarding_location_subtitle">We use only your approximate location to fetch weather from OpenWeather. Nothing else is collected, and it\'s never linked to you.</string>
+    <string name="onboarding_location_button">Enable Location</string>
 </resources>

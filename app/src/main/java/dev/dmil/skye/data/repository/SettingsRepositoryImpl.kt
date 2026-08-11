@@ -2,6 +2,7 @@ package dev.dmil.skye.data.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -21,6 +22,15 @@ class SettingsRepositoryImpl @Inject constructor(
     private val apiKeyKey = stringPreferencesKey("api_key")
     private val apiKeySetAtKey = longPreferencesKey("api_key_set_at")
     private val languageKey = stringPreferencesKey("language")
+    private val onboardingCompletedKey = booleanPreferencesKey("onboarding_completed")
+
+    override val hasCompletedOnboarding = dataStore.data.map { prefs ->
+        prefs[onboardingCompletedKey] ?: false
+    }
+
+    override suspend fun setOnboardingCompleted() {
+        dataStore.edit { it[onboardingCompletedKey] = true }
+    }
 
     override val language = dataStore.data.map { prefs ->
         prefs[languageKey]?.let { runCatching { Language.valueOf(it) }.getOrNull() } ?: Language.SYSTEM

@@ -45,4 +45,10 @@
     <string name="day_today">Сегодня</string>
     <string name="unit_meters_per_second">м/с</string>
     <string name="unit_hectopascal">гПа</string>
+
+    <string name="onboarding_welcome_subtitle">Быстрое и лёгкое приложение с открытым кодом – созданное с уважением к приватности.</string>
+    <string name="onboarding_continue">Продолжить</string>
+    <string name="onboarding_location_title">Геолокация – приватно</string>
+    <string name="onboarding_location_subtitle">Мы используем только примерное местоположение, чтобы получить погоду от OpenWeather. Больше мы ничего не собираем и ни с чем это не связываем.</string>
+    <string name="onboarding_location_button">Разрешить геолокацию</string>
 </resources>

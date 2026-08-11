@@ -11,15 +11,13 @@ plugins {
 android {
     namespace = "dev.dmil.skye"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
         applicationId = "dev.dmil.skye"
         minSdk = 30
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -88,4 +86,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
 
     implementation(libs.androidx.appcompat)
+
+    implementation(libs.androidx.core.splashscreen)
 }

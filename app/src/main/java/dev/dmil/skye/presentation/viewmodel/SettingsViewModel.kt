@@ -8,6 +8,7 @@ import dev.dmil.skye.domain.model.ThemeMode
 import dev.dmil.skye.domain.model.Units
 import dev.dmil.skye.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -31,6 +32,13 @@ class SettingsViewModel @Inject constructor(
 
     val language = settingsRepository.language
         .stateIn(viewModelScope, SharingStarted.Eagerly, Language.SYSTEM)
+
+    val hasCompletedOnboarding: StateFlow<Boolean?> = settingsRepository.hasCompletedOnboarding
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setOnboardingCompleted() {
+        viewModelScope.launch { settingsRepository.setOnboardingCompleted() }
+    }
 
     fun setLanguage(language: Language) {
         viewModelScope.launch { settingsRepository.setLanguage(language) }

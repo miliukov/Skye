@@ -284,7 +284,7 @@ fun CitySearchBar(
             properties = PopupProperties(focusable = false),
             modifier = Modifier
                 .fillMaxWidth(0.9f)
-                .background(White, RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
         ) {
             results.forEach { result ->
                 val subtitle = listOfNotNull(result.state, result.countryCode)
@@ -292,7 +292,10 @@ fun CitySearchBar(
                     .joinToString(", ")
                 DropdownMenuItem(
                     text = {
-                        Text(text = if (subtitle.isBlank()) result.city else "${result.city}, $subtitle")
+                        Text(
+                            text = if (subtitle.isBlank()) result.city else "${result.city}, $subtitle",
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
                     },
                     onClick = { onResultClick(result) }
                 )
