@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
+import dev.dmil.skye.R
 import dev.dmil.skye.domain.model.GeocodingResult
 import dev.dmil.skye.domain.model.SavedCity
 import dev.dmil.skye.domain.model.Units
@@ -97,7 +99,7 @@ fun CitiesScreen(
             IconButton(onClick = onOpenSettings) {
                 Icon(
                     imageVector = Icons.Filled.Settings,
-                    contentDescription = "Settings",
+                    contentDescription = stringResource(R.string.cities_settings_content_description),
                     tint = MaterialTheme.colorScheme.onBackground
                 )
             }
@@ -109,7 +111,7 @@ fun CitiesScreen(
             contentPadding = PaddingValues(vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(cities, key = { "${it.lat}_${it.lon}" }) { city ->
+            items(cities, key = { it.savedCity?.id?.toString() ?: "current_location" }) { city ->
                 CityRow(
                     item = city,
                     onClick = { onCityClick(city) },
@@ -192,7 +194,7 @@ private fun CityCardContent(
                     Spacer(modifier = Modifier.size(6.dp))
                     Icon(
                         imageVector = Icons.Filled.LocationOn,
-                        contentDescription = "Текущая геопозиция",
+                        contentDescription = stringResource(R.string.cities_current_location_content_description),
                         tint = Orange,
                         modifier = Modifier.size(18.dp)
                     )
@@ -260,7 +262,7 @@ fun CitySearchBar(
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
                 decorationBox = { innerTextField ->
                     if (query.isEmpty()) {
-                        Text(text = "Search...", fontSize = 18.sp, color = Gray)
+                        Text(text = stringResource(R.string.cities_search_placeholder), fontSize = 18.sp, color = Gray)
                     }
                     innerTextField()
                 }
@@ -323,7 +325,7 @@ private fun DeleteBackground(shape: RoundedCornerShape) {
     ) {
         Icon(
             imageVector = Icons.Filled.Delete,
-            contentDescription = "Удалить",
+            contentDescription = stringResource(R.string.cities_delete_content_description),
             tint = White,
             modifier = Modifier.padding(end = 20.dp).size(22.dp)
         )

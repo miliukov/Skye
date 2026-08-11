@@ -36,12 +36,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.dmil.skye.R
 import dev.dmil.skye.domain.model.DailyForecast
 import dev.dmil.skye.domain.model.Units
 import dev.dmil.skye.domain.model.Weather
@@ -51,9 +53,9 @@ import dev.dmil.skye.presentation.ui.theme.Orange
 import dev.dmil.skye.presentation.ui.theme.White
 import dev.dmil.skye.presentation.util.formatTemperature
 import dev.dmil.skye.presentation.util.formatWindSpeed
-import java.util.Locale
 import java.time.format.TextStyle as DateTextStyle
 import kotlin.collections.mapIndexed
+import androidx.compose.ui.platform.LocalLocale
 
 @Composable
 fun DayDetailOverlay(
@@ -119,7 +121,7 @@ fun DayDetailOverlay(
                         days.forEachIndexed { index, d ->
                             DatePill(
                                 day = d,
-                                isToday = d.dayLabel == "Today",
+                                isToday = d.date == java.time.LocalDate.now(),
                                 isSelected = index == selectedIndex,
                                 onClick = { onDaySelected(index) }
                             )
@@ -166,7 +168,9 @@ private fun DatePill(
             .padding(horizontal = 6.dp, vertical = 4.dp)
     ) {
         Text(
-            text = day.date.dayOfWeek.getDisplayName(DateTextStyle.NARROW, Locale.ENGLISH),
+            text = day.date.dayOfWeek
+                .getDisplayName(DateTextStyle.NARROW, LocalLocale.current.platformLocale)
+                .replaceFirstChar { it.uppercase() },
             fontSize = 16.sp,
             color = if (isToday) Orange else White.copy(alpha = 0.6f)
         )
@@ -251,10 +255,10 @@ fun DayTemperatureGraph(hourly: List<Weather>, units: Units, modifier: Modifier 
 @Composable
 private fun DayInfoGrid(day: DailyForecast, units: Units) {
     val items = listOf(
-        "Feels like" to formatTemperature(day.feelsLike, units),
-        "Humidity" to "${day.humidity}%",
-        "Pressure" to "${day.pressure} hPa",
-        "Wind" to formatWindSpeed(day.windSpeed, units)
+        stringResource(R.string.day_detail_feels_like) to formatTemperature(day.feelsLike, units),
+        stringResource(R.string.day_detail_humidity) to "${day.humidity}%",
+        stringResource(R.string.day_detail_pressure) to "${day.pressure} ${stringResource(R.string.unit_hectopascal)}",
+        stringResource(R.string.day_detail_wind) to formatWindSpeed(day.windSpeed, units)
     )
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -268,7 +272,11 @@ private fun DayInfoGrid(day: DailyForecast, units: Units) {
                 }
             }
         }
-        InfoCard(label = "Conditions", value = day.description, modifier = Modifier.fillMaxWidth())
+        InfoCard(
+            label = stringResource(R.string.day_detail_conditions),
+            value = day.description,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 

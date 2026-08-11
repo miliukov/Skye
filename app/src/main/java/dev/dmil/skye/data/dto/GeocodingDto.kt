@@ -9,5 +9,7 @@ data class GeocodingDto(
     val lon: Double,
     val state: String? = null,
     @SerializedName("country")
-    val countryCode: String
+    val countryCode: String,
+    @SerializedName("local_names")
+    val localNames: Map<String, String>? = null
 )

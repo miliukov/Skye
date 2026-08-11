@@ -22,6 +22,7 @@ import dev.dmil.skye.domain.usecase.GetWeeklyForecastUseCase
 import dev.dmil.skye.domain.usecase.TestApiKeyUseCase
 import dev.dmil.skye.presentation.screen.unixToHour
 import dev.dmil.skye.presentation.state.CityListItem
+import dev.dmil.skye.presentation.state.WeatherError
 import dev.dmil.skye.presentation.state.WeatherUiState
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -54,7 +55,7 @@ class WeatherViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
-    private val _searchError = MutableStateFlow("")
+    private val _searchError = MutableStateFlow<WeatherError?>(null)
     val searchError = _searchError.asStateFlow()
 
     private val _searchResult = MutableStateFlow<List<GeocodingResult>>(emptyList())
@@ -90,7 +91,7 @@ class WeatherViewModel @Inject constructor(
     fun onLocationPermissionResult(isGranted: Boolean) {
         Log.d("WeatherViewModel", "Permission granted: $isGranted")
         if (isGranted) getCurrentLocation()
-        else _uiState.value = WeatherUiState.Error("Отсутствует разрешение геолокации")
+        else _uiState.value = WeatherUiState.Error(WeatherError.LocationPermissionDenied)
     }
 
     @RequiresPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -196,11 +197,11 @@ class WeatherViewModel @Inject constructor(
                 val weeklyForecast = getWeeklyForecastUseCase(filtered)
                 _uiState.value = WeatherUiState.Success(weather, filtered, weeklyForecast)
                 onWeatherLoaded?.invoke(weather)
-                _searchError.value = ""
+                _searchError.value = null
             } else {
                 val e = weatherResult.exceptionOrNull()
                 if (_uiState.value is WeatherUiState.Refreshing) {
-                    _searchError.value = "Ошибка в названии города"
+                    _searchError.value = WeatherError.InvalidCityName
                     val refreshing = _uiState.value as WeatherUiState.Refreshing
                     _uiState.value = WeatherUiState.Success(refreshing.weather, refreshing.forecast, refreshing.weeklyForecast)
                     Log.e("WeatherViewModel.getWeather", e?.message ?: "Error")
@@ -208,9 +209,9 @@ class WeatherViewModel @Inject constructor(
                 }
                 Log.e("WeatherViewModel.getWeather", e?.message ?: "Unknown error")
                 when (e) {
-                    is HttpException -> _uiState.value = WeatherUiState.Error("Ошибка сервера")
-                    is IOException -> _uiState.value = WeatherUiState.Error("Отсутствует подключение к интернету")
-                    else -> _uiState.value = WeatherUiState.Error("Ошибка. Попробуйте позднее")
+                    is HttpException -> _uiState.value = WeatherUiState.Error(WeatherError.ServerError)
+                    is IOException -> _uiState.value = WeatherUiState.Error(WeatherError.NoInternet)
+                    else -> _uiState.value = WeatherUiState.Error(WeatherError.Unknown)
                 }
             }
         }

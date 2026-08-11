@@ -64,6 +64,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,6 +74,7 @@ import dev.dmil.skye.R
 import dev.dmil.skye.domain.model.DailyForecast
 import dev.dmil.skye.domain.model.Units
 import dev.dmil.skye.domain.model.Weather
+import dev.dmil.skye.presentation.state.WeatherError
 import dev.dmil.skye.presentation.state.WeatherUiState
 import dev.dmil.skye.presentation.ui.theme.Gray
 import dev.dmil.skye.presentation.ui.theme.White
@@ -82,6 +84,8 @@ import dev.dmil.skye.presentation.viewmodel.SettingsViewModel
 import dev.dmil.skye.presentation.viewmodel.WeatherViewModel
 import kotlin.collections.forEachIndexed
 import kotlin.collections.lastIndex
+import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun WeatherScreen(
@@ -174,7 +178,7 @@ fun WeatherScreen(
                     onSearch = viewModel::onSearch,
                     onDismissSearch = viewModel::onDismissSearch,
                     onAddCity = viewModel::onAddToFavorites,
-                    searchError = searchError.value,
+                    searchError = searchError.value?.let { errorMessage(it) } ?: "",
                     searchResult = searchResult.value,
                     onOpenSettings = { showSettings = true },
                     units = units.value
@@ -245,15 +249,18 @@ fun WeatherScreen(
 
     val apiKey = settingsViewModel.apiKey.collectAsState()
     val apiKeySetAt = settingsViewModel.apiKeySetAt.collectAsState()
+    val language = settingsViewModel.language.collectAsState()
 
     SettingsOverlay(
         visible = showSettings,
         themeMode = themeMode.value,
         units = units.value,
+        language = language.value,
         apiKey = apiKey.value,
         apiKeySetAt = apiKeySetAt.value,
         onThemeModeSelected = settingsViewModel::setThemeMode,
         onUnitsSelected = settingsViewModel::setUnits,
+        onLanguageSelected = settingsViewModel::setLanguage,
         onApiKeyChanged = { key ->
             if (key == null) {
                 settingsViewModel.setApiKeyAwait(null)
@@ -335,7 +342,7 @@ fun WeatherContent(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.List,
-                        contentDescription = "Города",
+                        contentDescription = stringResource(R.string.home_open_cities_content_description),
                         tint = Gray
                     )
                 }
@@ -390,11 +397,17 @@ fun Header(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
                     painter = painterResource(getCorrectConditionIcon(icon)),
-                    contentDescription = "weather icon",
+                    contentDescription = stringResource(R.string.header_weather_icon_content_description),
                     modifier = Modifier.size(130.dp),
                     tint = weatherIconTint(icon, isDarkBackground)
                 )
-                Text(text = cityName, fontSize = 40.sp, color = onBackground)
+                Text(
+                    text = cityName,
+                    fontSize = 40.sp,
+                    lineHeight = 44.sp,
+                    textAlign = TextAlign.Center,
+                    color = onBackground
+                )
                 Text(text = formatTemperature(temperature, units), fontSize = 80.sp, color = onBackground)
             }
         }
@@ -422,7 +435,7 @@ fun ForecastCarousel(weather: Weather, forecast: List<Weather>, units: Units) {
             hourly.forEachIndexed { index, w ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = if (index == 0) "Now" else "${unixToHour(w.date, w.timezone)}",
+                        text = if (index == 0) stringResource(R.string.forecast_now) else "${unixToHour(w.date, w.timezone)}",
                         fontSize = 15.sp,
                         color = onBackground
                     )
@@ -479,12 +492,20 @@ private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit, units: Uni
             .padding(vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val isToday = day.date == java.time.LocalDate.now()
         Text(
-            text = day.dayLabel,
+            text = if (isToday) {
+                stringResource(R.string.day_today)
+            } else {
+                day.date.dayOfWeek
+                    .getDisplayName(java.time.format.TextStyle.SHORT, LocalLocale.current.platformLocale)
+                    .replaceFirstChar { it.uppercase() }
+            },
             fontSize = 22.sp,
             fontWeight = FontWeight.Normal,
             color = onBackground,
-            modifier = Modifier.width(78.dp)
+            maxLines = 1,
+            modifier = Modifier.width(96.dp)
         )
         Row(
             modifier = Modifier.weight(1f),
@@ -532,15 +553,22 @@ private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit, units: Uni
 }
 
 @Composable
-fun ErrorContent(error: String) {
+fun ErrorContent(error: WeatherError) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = error
-        )
+        Text(text = errorMessage(error))
     }
+}
+
+@Composable
+fun errorMessage(error: WeatherError): String = when (error) {
+    WeatherError.LocationPermissionDenied -> stringResource(R.string.error_location_permission_denied)
+    WeatherError.ServerError -> stringResource(R.string.error_server)
+    WeatherError.NoInternet -> stringResource(R.string.error_no_internet)
+    WeatherError.InvalidCityName -> stringResource(R.string.error_invalid_city_name)
+    WeatherError.Unknown -> stringResource(R.string.error_unknown)
 }
 
 fun getCorrectConditionIcon(id: String): Int {

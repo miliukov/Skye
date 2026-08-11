@@ -45,10 +45,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.dmil.skye.R
+import dev.dmil.skye.domain.model.Language
 import dev.dmil.skye.domain.model.ThemeMode
 import dev.dmil.skye.domain.model.Units
 import dev.dmil.skye.presentation.ui.theme.Gray
@@ -67,6 +70,8 @@ fun SettingsOverlay(
     onUnitsSelected: (Units) -> Unit,
     onApiKeyChanged: suspend (String?) -> Result<Unit>,
     onDismiss: () -> Unit,
+    language: Language,
+    onLanguageSelected: (Language) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -121,11 +126,11 @@ fun SettingsOverlay(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "Settings", fontSize = 24.sp, color = onBackground)
+                    Text(text = stringResource(R.string.settings_title), fontSize = 24.sp, color = onBackground)
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Filled.Close,
-                            contentDescription = "Close",
+                            contentDescription = stringResource(R.string.settings_close_content_description),
                             tint = Gray
                         )
                     }
@@ -140,16 +145,16 @@ fun SettingsOverlay(
                         .verticalScroll(rememberScrollState())
                 ) {
 
-                    Text(text = "Theme", fontSize = 14.sp, color = Gray)
+                    Text(text = stringResource(R.string.settings_theme_label), fontSize = 14.sp, color = Gray)
                     Spacer(modifier = Modifier.height(8.dp))
                     SegmentedControl(
                         options = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK),
                         selected = themeMode,
                         labelFor = {
                             when (it) {
-                                ThemeMode.SYSTEM -> "System"
-                                ThemeMode.LIGHT -> "Light"
-                                ThemeMode.DARK -> "Dark"
+                                ThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system)
+                                ThemeMode.LIGHT -> stringResource(R.string.settings_theme_light)
+                                ThemeMode.DARK -> stringResource(R.string.settings_theme_dark)
                             }
                         },
                         onSelect = onThemeModeSelected
@@ -157,14 +162,14 @@ fun SettingsOverlay(
 
                     Spacer(modifier = Modifier.height(28.dp))
 
-                    Text(text = "Units", fontSize = 14.sp, color = Gray)
+                    Text(text = stringResource(R.string.settings_units_label), fontSize = 14.sp, color = Gray)
                     Spacer(modifier = Modifier.height(8.dp))
                     SegmentedControl(
                         options = listOf(Units.METRIC, Units.IMPERIAL),
                         selected = units,
                         labelFor = {
                             when (it) {
-                                Units.METRIC -> "°C, m/s"
+                                Units.METRIC -> "°C, ${stringResource(R.string.unit_meters_per_second)}"
                                 Units.IMPERIAL -> "°F, mph"
                             }
                         },
@@ -172,10 +177,26 @@ fun SettingsOverlay(
                     )
                     Spacer(modifier = Modifier.height(28.dp))
 
-                    Text(text = "OpenWeather API key", fontSize = 14.sp, color = Gray)
+                    Text(text = stringResource(R.string.settings_language_label), fontSize = 14.sp, color = Gray)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SegmentedControl(
+                        options = listOf(Language.SYSTEM, Language.ENGLISH, Language.RUSSIAN),
+                        selected = language,
+                        labelFor = {
+                            when (it) {
+                                Language.SYSTEM -> stringResource(R.string.settings_language_system)
+                                Language.ENGLISH -> "English"
+                                Language.RUSSIAN -> "Русский"
+                            }
+                        },
+                        onSelect = onLanguageSelected
+                    )
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    Text(text = stringResource(R.string.settings_api_key_label), fontSize = 14.sp, color = Gray)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Optional. Leave empty to use the app's default key.",
+                        text = stringResource(R.string.settings_api_key_description),
                         fontSize = 12.sp,
                         color = Gray
                     )
@@ -186,6 +207,7 @@ fun SettingsOverlay(
                     val scope = rememberCoroutineScope()
                     var isChecking by remember { mutableStateOf(false) }
                     var errorMessage by remember { mutableStateOf<String?>(null) }
+                    val apiKeyErrorText = stringResource(R.string.settings_api_key_error)
 
                     if (!isEditingKey && apiKey != null) {
                         Row(
@@ -199,11 +221,15 @@ fun SettingsOverlay(
                             Column {
                                 Text(text = maskApiKey(apiKey), fontSize = 15.sp, color = onBackground)
                                 apiKeySetAt?.let {
-                                    Text(text = formatKeySetDate(it), fontSize = 12.sp, color = Gray)
+                                    Text(
+                                        text = stringResource(R.string.settings_api_key_set_on, formatKeySetDate(it)),
+                                        fontSize = 12.sp,
+                                        color = Gray
+                                    )
                                 }
                             }
                             Text(
-                                text = "Change",
+                                text = stringResource(R.string.settings_api_key_change),
                                 fontSize = 14.sp,
                                 color = Orange,
                                 modifier = Modifier.clickable {
@@ -229,7 +255,7 @@ fun SettingsOverlay(
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 decorationBox = { innerTextField ->
                                     if (keyInput.isEmpty()) {
-                                        Text(text = "Your API key", fontSize = 15.sp, color = Gray)
+                                        Text(text = stringResource(R.string.settings_api_key_placeholder), fontSize = 15.sp, color = Gray)
                                     }
                                     innerTextField()
                                 }
@@ -254,7 +280,7 @@ fun SettingsOverlay(
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(text = "Cancel", fontSize = 15.sp, color = onBackground)
+                                    Text(text = stringResource(R.string.settings_api_key_cancel), fontSize = 15.sp, color = onBackground)
                                 }
                             }
 
@@ -272,7 +298,7 @@ fun SettingsOverlay(
                                             if (result.isSuccess) {
                                                 isEditingKey = false
                                             } else {
-                                                errorMessage = "Couldn't verify this key. Check it and try again."
+                                                errorMessage = apiKeyErrorText
                                             }
                                         }
                                     }
@@ -286,7 +312,7 @@ fun SettingsOverlay(
                                         strokeWidth = 2.dp
                                     )
                                 } else {
-                                    Text(text = "Save", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.background)
+                                    Text(text = stringResource(R.string.settings_api_key_save), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.background)
                                 }
                             }
                         }
@@ -308,7 +334,7 @@ fun SettingsOverlay(
 private fun <T> SegmentedControl(
     options: List<T>,
     selected: T,
-    labelFor: (T) -> String,
+    labelFor: @Composable (T) -> String,
     onSelect: (T) -> Unit
 ) {
     val onBackground = MaterialTheme.colorScheme.onBackground
@@ -348,6 +374,8 @@ private fun formatKeySetDate(epochMillis: Long): String {
     val date = java.time.Instant.ofEpochMilli(epochMillis)
         .atZone(java.time.ZoneId.systemDefault())
         .toLocalDate()
-    val formatter = java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH)
-    return "Set on ${date.format(formatter)}"
+    val formatter = java.time.format.DateTimeFormatter
+        .ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)
+        .withLocale(Locale.getDefault())
+    return date.format(formatter)
 }

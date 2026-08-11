@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import dev.dmil.skye.domain.model.Language
 import dev.dmil.skye.domain.model.ThemeMode
 import dev.dmil.skye.domain.model.Units
 import dev.dmil.skye.domain.repository.SettingsRepository
@@ -19,6 +20,15 @@ class SettingsRepositoryImpl @Inject constructor(
     private val unitsKey = stringPreferencesKey("units")
     private val apiKeyKey = stringPreferencesKey("api_key")
     private val apiKeySetAtKey = longPreferencesKey("api_key_set_at")
+    private val languageKey = stringPreferencesKey("language")
+
+    override val language = dataStore.data.map { prefs ->
+        prefs[languageKey]?.let { runCatching { Language.valueOf(it) }.getOrNull() } ?: Language.SYSTEM
+    }
+
+    override suspend fun setLanguage(language: Language) {
+        dataStore.edit { it[languageKey] = language.name }
+    }
 
     override val apiKeySetAt = dataStore.data.map { prefs -> prefs[apiKeySetAtKey] }
 

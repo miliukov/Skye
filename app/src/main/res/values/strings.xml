@@ -1,3 +1,50 @@
 <resources>
-    <string name="app_name">Skye</string>
+    <string name="app_name" translatable="false">Skye</string>
+
+    <string name="error_location_permission_denied">Location permission is required</string>
+    <string name="error_server">Server error</string>
+    <string name="error_no_internet">No internet connection</string>
+    <string name="error_invalid_city_name">Couldn\'t find this city</string>
+    <string name="error_unknown">Something went wrong. Please try again later</string>
+
+    <!-- Home -->
+    <string name="header_weather_icon_content_description">weather icon</string>
+    <string name="home_open_cities_content_description">Cities</string>
+    <string name="forecast_now">Now</string>
+
+    <!-- Cities -->
+    <string name="cities_settings_content_description">Settings</string>
+    <string name="cities_current_location_content_description">Current location</string>
+    <string name="cities_search_placeholder">Search…</string>
+    <string name="cities_delete_content_description">Delete</string>
+
+    <!-- Day detail -->
+    <string name="day_detail_feels_like">Feels like</string>
+    <string name="day_detail_humidity">Humidity</string>
+    <string name="day_detail_pressure">Pressure</string>
+    <string name="day_detail_wind">Wind</string>
+    <string name="day_detail_conditions">Conditions</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_close_content_description">Close</string>
+    <string name="settings_theme_label">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_units_label">Units</string>
+    <string name="settings_language_label">Language</string>
+    <string name="settings_language_system">System</string>
+    <string name="settings_api_key_label">OpenWeather API key</string>
+    <string name="settings_api_key_description">Optional. Leave empty to use the app\'s default key.</string>
+    <string name="settings_api_key_change">Change</string>
+    <string name="settings_api_key_cancel">Cancel</string>
+    <string name="settings_api_key_placeholder">Your API key</string>
+    <string name="settings_api_key_save">Save</string>
+    <string name="settings_api_key_error">Couldn\'t verify this key. Check it and try again.</string>
+    <string name="settings_api_key_set_on">Set on %1$s</string>
+
+    <string name="day_today">Today</string>
+    <string name="unit_meters_per_second">m/s</string>
+    <string name="unit_hectopascal">hPa</string>
 </resources>

@@ -4,7 +4,6 @@ import java.time.LocalDate
 
 data class DailyForecast(
     val date: LocalDate,
-    val dayLabel: String,
     val icon: String,
     val minTemp: Int,
     val maxTemp: Int,

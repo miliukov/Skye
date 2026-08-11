@@ -3,6 +3,7 @@ package dev.dmil.skye.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.dmil.skye.domain.model.Language
 import dev.dmil.skye.domain.model.ThemeMode
 import dev.dmil.skye.domain.model.Units
 import dev.dmil.skye.domain.repository.SettingsRepository
@@ -27,6 +28,13 @@ class SettingsViewModel @Inject constructor(
 
     val apiKeySetAt = settingsRepository.apiKeySetAt
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val language = settingsRepository.language
+        .stateIn(viewModelScope, SharingStarted.Eagerly, Language.SYSTEM)
+
+    fun setLanguage(language: Language) {
+        viewModelScope.launch { settingsRepository.setLanguage(language) }
+    }
 
     fun setApiKey(key: String?) {
         viewModelScope.launch { settingsRepository.setApiKey(key) }

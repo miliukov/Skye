@@ -4,8 +4,10 @@ import dev.dmil.skye.data.dto.GeocodingDto
 import dev.dmil.skye.domain.model.GeocodingResult
 
 fun GeocodingDto.toGeocodingResult(): GeocodingResult {
+    val language = java.util.Locale.getDefault().language
+    val localizedName = this.localNames?.get(language) ?: this.city
     return GeocodingResult(
-        city = this.city,
+        city = localizedName,
         state = this.state,
         countryCode = this.countryCode,
         lat = this.lat,

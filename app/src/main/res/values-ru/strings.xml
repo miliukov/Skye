@@ -1,0 +1,48 @@
+<resources>
+    <string name="error_location_permission_denied">Необходимо разрешение на геолокацию</string>
+    <string name="error_server">Ошибка сервера</string>
+    <string name="error_no_internet">Отсутствует подключение к интернету</string>
+    <string name="error_invalid_city_name">Не удалось найти этот город</string>
+    <string name="error_unknown">Что-то пошло не так. Попробуйте позднее</string>
+
+    <!-- Home -->
+    <string name="header_weather_icon_content_description">иконка погоды</string>
+    <string name="home_open_cities_content_description">Города</string>
+    <string name="forecast_now">Сейчас</string>
+
+    <!-- Cities -->
+    <string name="cities_settings_content_description">Настройки</string>
+    <string name="cities_current_location_content_description">Текущая геопозиция</string>
+    <string name="cities_search_placeholder">Поиск…</string>
+    <string name="cities_delete_content_description">Удалить</string>
+
+    <!-- Day detail -->
+    <string name="day_detail_feels_like">Ощущается как</string>
+    <string name="day_detail_humidity">Влажность</string>
+    <string name="day_detail_pressure">Давление</string>
+    <string name="day_detail_wind">Ветер</string>
+    <string name="day_detail_conditions">Погода</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Настройки</string>
+    <string name="settings_close_content_description">Закрыть</string>
+    <string name="settings_theme_label">Тема</string>
+    <string name="settings_theme_system">Системная</string>
+    <string name="settings_theme_light">Светлая</string>
+    <string name="settings_theme_dark">Тёмная</string>
+    <string name="settings_units_label">Единицы измерения</string>
+    <string name="settings_language_label">Язык</string>
+    <string name="settings_language_system">Системный</string>
+    <string name="settings_api_key_label">Ключ API OpenWeather</string>
+    <string name="settings_api_key_description">Необязательно. Оставьте пустым, чтобы использовать ключ приложения по умолчанию.</string>
+    <string name="settings_api_key_change">Изменить</string>
+    <string name="settings_api_key_cancel">Отмена</string>
+    <string name="settings_api_key_placeholder">Ваш API-ключ</string>
+    <string name="settings_api_key_save">Сохранить</string>
+    <string name="settings_api_key_error">Не удалось проверить этот ключ. Проверьте его и попробуйте снова.</string>
+    <string name="settings_api_key_set_on">Установлен %1$s</string>
+
+    <string name="day_today">Сегодня</string>
+    <string name="unit_meters_per_second">м/с</string>
+    <string name="unit_hectopascal">гПа</string>
+</resources>

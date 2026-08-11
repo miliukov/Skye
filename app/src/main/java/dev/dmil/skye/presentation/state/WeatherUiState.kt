@@ -19,6 +19,6 @@ sealed class WeatherUiState {
         val weeklyForecast: List<DailyForecast>
     ): WeatherUiState()
 
-    data class Error(val error: String): WeatherUiState()
+    data class Error(val error: WeatherError): WeatherUiState()
 
 }

@@ -1,5 +1,8 @@
 package dev.dmil.skye.presentation.util
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import dev.dmil.skye.R
 import dev.dmil.skye.domain.model.Units
 import kotlin.math.roundToInt
 
@@ -11,11 +14,13 @@ fun formatTemperature(celsius: Double, units: Units): String {
 fun formatTemperature(celsius: Int, units: Units): String =
     formatTemperature(celsius.toDouble(), units)
 
+@Composable
 fun formatWindSpeed(metersPerSecond: Double, units: Units): String {
     return if (units == Units.IMPERIAL) {
         val mph = metersPerSecond * 2.23694
         "${mph.roundToInt()} mph"
     } else {
-        "${metersPerSecond.roundToInt()} m/s"
+        val unit = stringResource(R.string.unit_meters_per_second)
+        "${metersPerSecond.roundToInt()} $unit"
     }
 }
