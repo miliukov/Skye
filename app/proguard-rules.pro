@@ -1,21 +1,22 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# --- Gson: DTO и domain-модели, которые сериализуются/десериализуются по рефлексии ---
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class dev.dmil.skye.data.dto.** { <fields>; }
+-keep class dev.dmil.skye.domain.model.** { <fields>; }
+-keepclassmembers,allowobfuscation class * {
+  @com.google.gson.annotations.SerializedName <fields>;
+}
+-keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
+-keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# --- WorkManager: класс воркера ищется по имени через Class.forName в рантайме ---
+-keep class * extends androidx.work.ListenableWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# --- Enum-настройки, сохраняемые в DataStore через .name / .valueOf(...) ---
+-keepclassmembers enum dev.dmil.skye.domain.model.** {
+    <fields>;
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}

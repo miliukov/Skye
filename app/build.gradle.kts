@@ -8,6 +8,13 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
+val localProperties = Properties().apply {
+    val propertiesFile = rootProject.file("local.properties")
+    if (propertiesFile.exists()) {
+        load(providers.fileContents(layout.projectDirectory.file("../local.properties")).asText.get().byteInputStream())
+    }
+}
+
 android {
     namespace = "dev.dmil.skye"
     compileSdk {
@@ -23,19 +30,27 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val properties = Properties()
-        properties.load(rootProject.file("local.properties").inputStream())
-
         buildConfigField(
             "String",
             "WEATHER_API_KEY",
-            "\"${properties["WEATHER_API_KEY"]}\""
+            "\"${localProperties["WEATHER_API_KEY"]}\""
         )
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(localProperties.getProperty("RELEASE_STORE_FILE"))
+            storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD")
+            keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
+            keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
