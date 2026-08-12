@@ -38,12 +38,13 @@ A clean, modern Android weather app with GPS location, city search with autocomp
 - [x] Dark / Light theme support
 - [x] Settings (units, RU/EN language support)
 - [x] Onboarding screen
+- [x] Widget for home screen
 
 ### 🚧 In Progress
-- [ ] Widget for home screen
+- [ ] Offline support & caching
 
 ### 📋 Planned
-- [ ] Replace destructive Room migration with a real Migration
+- [ ] Google Play Store publishing
 
 ---
 

@@ -3,12 +3,13 @@ package dev.dmil.skye.data.local
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 
 @Dao
 interface SavedCityDao {
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun addSavedCity(city: SavedCityEntity)
 
     @Query("SELECT * FROM savedcityentity")

@@ -51,4 +51,14 @@
     <string name="onboarding_location_title">Геолокация – приватно</string>
     <string name="onboarding_location_subtitle">Мы используем только примерное местоположение, чтобы получить погоду от OpenWeather. Больше мы ничего не собираем и ни с чем это не связываем.</string>
     <string name="onboarding_location_button">Разрешить геолокацию</string>
+
+    <string name="settings_github_link">Открыть на GitHub</string>
+
+    <string name="widget_tap_to_setup">Нажмите для настройки</string>
+    <string name="widget_updated_just_now">Только что</string>
+    <string name="widget_updated_minutes_ago">%1$d мин назад</string>
+    <string name="widget_updated_hours_ago">%1$d ч назад</string>
+    <string name="widget_config_title">Выберите город</string>
+    <string name="widget_config_subtitle">Этот город закрепится за виджетом</string>
+    <string name="widget_current_location_fallback">Текущая геопозиция</string>
 </resources>

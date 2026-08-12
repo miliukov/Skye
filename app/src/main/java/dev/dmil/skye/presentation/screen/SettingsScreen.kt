@@ -1,5 +1,6 @@
 package dev.dmil.skye.presentation.screen
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -30,7 +31,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +49,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -58,6 +64,7 @@ import dev.dmil.skye.presentation.ui.theme.Gray
 import dev.dmil.skye.presentation.ui.theme.Orange
 import kotlinx.coroutines.launch
 import java.util.Locale
+import androidx.core.net.toUri
 
 @Composable
 fun SettingsOverlay(
@@ -323,10 +330,59 @@ fun SettingsOverlay(
                         Text(text = it, fontSize = 13.sp, color = Color(0xFFFF4430))
                     }
 
+                    Spacer(modifier = Modifier.height(28.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    val context = LocalContext.current
+                    LinkRow(
+                        icon = Icons.Filled.Code,
+                        label = stringResource(R.string.settings_github_link),
+                        onClick = { openUrl(context, "https://github.com/miliukov/Skye") }
+                    )
+                    LinkRow(
+                        icon = Icons.Filled.Email,
+                        label = "contact@dmil.dev",
+                        onClick = { sendEmail(context, "contact@dmil.dev") }
+                    )
+
                     Spacer(modifier = Modifier.height(20.dp))
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LinkRow(icon: ImageVector, label: String, onClick: () -> Unit) {
+    val onBackground = MaterialTheme.colorScheme.onBackground
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = onBackground,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(text = label, fontSize = 15.sp, color = onBackground)
+    }
+}
+
+private fun openUrl(context: android.content.Context, url: String) {
+    runCatching {
+        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+    }
+}
+
+private fun sendEmail(context: android.content.Context, email: String) {
+    runCatching {
+        context.startActivity(Intent(Intent.ACTION_SENDTO, "mailto:$email".toUri()))
     }
 }
 

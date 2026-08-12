@@ -53,4 +53,14 @@
     <string name="onboarding_location_title">Location, kept private</string>
     <string name="onboarding_location_subtitle">We use only your approximate location to fetch weather from OpenWeather. Nothing else is collected, and it\'s never linked to you.</string>
     <string name="onboarding_location_button">Enable Location</string>
+
+    <string name="settings_github_link">View on GitHub</string>
+
+    <string name="widget_tap_to_setup">Tap to set up</string>
+    <string name="widget_updated_just_now">Just now</string>
+    <string name="widget_updated_minutes_ago">%1$dm ago</string>
+    <string name="widget_updated_hours_ago">%1$dh ago</string>
+    <string name="widget_config_title">Choose a city</string>
+    <string name="widget_config_subtitle">This city will be pinned to the widget</string>
+    <string name="widget_current_location_fallback">Current location</string>
 </resources>
