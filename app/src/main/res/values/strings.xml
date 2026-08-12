@@ -63,4 +63,9 @@
     <string name="widget_config_title">Choose a city</string>
     <string name="widget_config_subtitle">This city will be pinned to the widget</string>
     <string name="widget_current_location_fallback">Current location</string>
+
+    <string name="stale_data_content_description">Showing offline data</string>
+
+    <string name="error_location_unavailable">Couldn\'t determine your location</string>
+    <string name="error_retry">Retry</string>
 </resources>

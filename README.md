@@ -39,11 +39,9 @@ A clean, modern Android weather app with GPS location, city search with autocomp
 - [x] Settings (units, RU/EN language support)
 - [x] Onboarding screen
 - [x] Widget for home screen
+- [x] Offline support & caching
 
 ### 🚧 In Progress
-- [ ] Offline support & caching
-
-### 📋 Planned
 - [ ] Google Play Store publishing
 
 ---

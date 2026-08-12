@@ -61,4 +61,9 @@
     <string name="widget_config_title">Выберите город</string>
     <string name="widget_config_subtitle">Этот город закрепится за виджетом</string>
     <string name="widget_current_location_fallback">Текущая геопозиция</string>
+
+    <string name="stale_data_content_description">Показаны сохранённые данные</string>
+
+    <string name="error_location_unavailable">Не удалось определить местоположение</string>
+    <string name="error_retry">Повторить</string>
 </resources>

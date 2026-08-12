@@ -13,5 +13,6 @@ data class CityListItem(
     val temperature: Int? = null,
     val icon: String? = null,
     val timezone: Int? = null,
-    val description: String? = null
+    val description: String? = null,
+    val isStale: Boolean = false
 )

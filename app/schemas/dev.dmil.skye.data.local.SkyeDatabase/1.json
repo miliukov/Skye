@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "3a28f4642eb05c4eb014e6a6fb9517ad",
+    "identityHash": "33e3189e9e2ece295e36903486c04b0b",
     "entities": [
       {
         "tableName": "SavedCityEntity",
@@ -67,11 +67,47 @@
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_SavedCityEntity_lat_lon` ON `${TABLE_NAME}` (`lat`, `lon`)"
           }
         ]
+      },
+      {
+        "tableName": "WeatherCacheEntity",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`cacheKey` TEXT NOT NULL, `weatherJson` TEXT NOT NULL, `forecastJson` TEXT NOT NULL, `fetchedAt` INTEGER NOT NULL, PRIMARY KEY(`cacheKey`))",
+        "fields": [
+          {
+            "fieldPath": "cacheKey",
+            "columnName": "cacheKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weatherJson",
+            "columnName": "weatherJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "forecastJson",
+            "columnName": "forecastJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAt",
+            "columnName": "fetchedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "cacheKey"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '3a28f4642eb05c4eb014e6a6fb9517ad')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '33e3189e9e2ece295e36903486c04b0b')"
     ]
   }
 }

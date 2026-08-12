@@ -10,13 +10,15 @@ sealed class WeatherUiState {
     data class Success(
         val weather: Weather,
         val forecast: List<Weather>,
-        val weeklyForecast: List<DailyForecast>
+        val weeklyForecast: List<DailyForecast>,
+        val isStale: Boolean = false
     ): WeatherUiState()
 
     data class Refreshing(
         val weather: Weather,
         val forecast: List<Weather>,
-        val weeklyForecast: List<DailyForecast>
+        val weeklyForecast: List<DailyForecast>,
+        val isStale: Boolean = false
     ): WeatherUiState()
 
     data class Error(val error: WeatherError): WeatherUiState()

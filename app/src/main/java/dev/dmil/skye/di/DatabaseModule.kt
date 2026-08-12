@@ -20,6 +20,10 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun providesWeatherCacheDao(database: SkyeDatabase) = database.weatherCacheDao()
+
+    @Provides
+    @Singleton
     fun providesDatabase(
         @ApplicationContext context: Context
     ) = Room.databaseBuilder(

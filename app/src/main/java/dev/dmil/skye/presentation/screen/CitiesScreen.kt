@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Settings
@@ -197,6 +198,15 @@ private fun CityCardContent(
                         contentDescription = stringResource(R.string.cities_current_location_content_description),
                         tint = Orange,
                         modifier = Modifier.size(18.dp)
+                    )
+                }
+                if (item.isStale) {
+                    Spacer(modifier = Modifier.size(6.dp))
+                    Icon(
+                        imageVector = Icons.Filled.CloudOff,
+                        contentDescription = stringResource(R.string.stale_data_content_description),
+                        tint = fg.copy(alpha = 0.6f),
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }

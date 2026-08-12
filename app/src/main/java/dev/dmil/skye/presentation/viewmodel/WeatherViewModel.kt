@@ -15,22 +15,20 @@ import dev.dmil.skye.domain.model.Weather
 import dev.dmil.skye.domain.usecase.AddSavedCityUseCase
 import dev.dmil.skye.domain.usecase.DeleteSavedCityUseCase
 import dev.dmil.skye.domain.usecase.GetCitySuggestionsUseCase
-import dev.dmil.skye.domain.usecase.GetForecastUseCase
 import dev.dmil.skye.domain.usecase.GetSavedCityUseCase
-import dev.dmil.skye.domain.usecase.GetWeatherUseCase
+import dev.dmil.skye.domain.usecase.GetWeatherWithCacheUseCase
 import dev.dmil.skye.domain.usecase.GetWeeklyForecastUseCase
 import dev.dmil.skye.domain.usecase.TestApiKeyUseCase
-import dev.dmil.skye.presentation.screen.unixToHour
 import dev.dmil.skye.presentation.state.CityListItem
 import dev.dmil.skye.presentation.state.WeatherError
 import dev.dmil.skye.presentation.state.WeatherUiState
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Inject
@@ -38,8 +36,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class WeatherViewModel @Inject constructor(
-    private val getWeatherUseCase: GetWeatherUseCase,
-    private val getForecastUseCase: GetForecastUseCase,
+    private val getWeatherWithCacheUseCase: GetWeatherWithCacheUseCase,
     private val getWeeklyForecastUseCase: GetWeeklyForecastUseCase,
     private val getCitySuggestionsUseCase: GetCitySuggestionsUseCase,
     private val getSavedCityUseCase: GetSavedCityUseCase,
@@ -95,29 +92,38 @@ class WeatherViewModel @Inject constructor(
     }
 
     @RequiresPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
-    fun getCurrentLocation() { // TODO: fix the location requester
+    fun getCurrentLocation() {
         Log.d("WeatherViewModel", "Requesting location...")
-        fusedLocationProviderClient.getCurrentLocation(
-            Priority.PRIORITY_BALANCED_POWER_ACCURACY,
-            null
-        )
-            .addOnSuccessListener { location ->
-                location ?: return@addOnSuccessListener
-                Log.d("WeatherViewModel", "Location: $location")
-                currentLocationLat = location.latitude
-                currentLocationLon = location.longitude
-                getWeather(
-                    lat = location.latitude,
-                    lon = location.longitude,
-                    onWeatherLoaded = { weather ->
-                        currentLocationWeather = weather
-                        refreshCities()
-                    }
-                )
-            }
-            .addOnFailureListener { e ->
+        viewModelScope.launch {
+            val location = try {
+                withTimeoutOrNull(20_000L.milliseconds) {
+                    fusedLocationProviderClient
+                        .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                        .await()
+                }
+            } catch (e: Exception) {
                 Log.e("WeatherViewModel.getCurrentLocation", e.message ?: "Unknown error")
+                null
             }
+
+            if (location == null) {
+                Log.e("WeatherViewModel.getCurrentLocation", "Location unavailable or timed out")
+                _uiState.value = WeatherUiState.Error(WeatherError.LocationUnavailable)
+                return@launch
+            }
+
+            Log.d("WeatherViewModel", "Location: $location")
+            currentLocationLat = location.latitude
+            currentLocationLon = location.longitude
+            getWeather(
+                lat = location.latitude,
+                lon = location.longitude,
+                onWeatherLoaded = { weather ->
+                    currentLocationWeather = weather
+                    refreshCities()
+                }
+            )
+        }
     }
 
     fun onAddToFavorites(result: GeocodingResult) {
@@ -171,39 +177,30 @@ class WeatherViewModel @Inject constructor(
             _uiState.value = WeatherUiState.Refreshing(
                 weather = current.weather,
                 forecast = current.forecast,
-                weeklyForecast = current.weeklyForecast
+                weeklyForecast = current.weeklyForecast,
+                isStale = current.isStale
             )
         } else _uiState.value = WeatherUiState.Loading
 
         viewModelScope.launch {
-            val weatherResult: Result<Weather>
-            val forecastResult: Result<List<Weather>>
-            coroutineScope {
-                val weatherDeferred = async { getWeatherUseCase(lat, lon) }
-                val forecastDeferred = async { getForecastUseCase(lat, lon) }
-                weatherResult = weatherDeferred.await()
-                forecastResult = forecastDeferred.await()
-            }
+            val result = getWeatherWithCacheUseCase(lat, lon)
 
-            if (weatherResult.isSuccess) {
-                val weather = weatherResult.getOrNull()!!.let { w ->
+            if (result.isSuccess) {
+                val weatherResult = result.getOrNull()!!
+                val weather = weatherResult.weather.let { w ->
                     if (displayName != null) w.copy(city = displayName) else w
                 }
-                val forecast = forecastResult.getOrNull() ?: emptyList()
-
-                val filtered = forecast.filter { it.date >= System.currentTimeMillis() / 1000 }
-                Log.d("Forecast", "now=${System.currentTimeMillis() / 1000}, first=${filtered.firstOrNull()?.date}, hour=${filtered.firstOrNull()?.let { unixToHour(it.date, weather.timezone) }}")
-
+                val filtered = weatherResult.forecast.filter { it.date >= System.currentTimeMillis() / 1000 }
                 val weeklyForecast = getWeeklyForecastUseCase(filtered)
-                _uiState.value = WeatherUiState.Success(weather, filtered, weeklyForecast)
+                _uiState.value = WeatherUiState.Success(weather, filtered, weeklyForecast, isStale = weatherResult.isStale)
                 onWeatherLoaded?.invoke(weather)
                 _searchError.value = null
             } else {
-                val e = weatherResult.exceptionOrNull()
+                val e = result.exceptionOrNull()
                 if (_uiState.value is WeatherUiState.Refreshing) {
                     _searchError.value = WeatherError.InvalidCityName
                     val refreshing = _uiState.value as WeatherUiState.Refreshing
-                    _uiState.value = WeatherUiState.Success(refreshing.weather, refreshing.forecast, refreshing.weeklyForecast)
+                    _uiState.value = WeatherUiState.Success(refreshing.weather, refreshing.forecast, refreshing.weeklyForecast, isStale = refreshing.isStale)
                     Log.e("WeatherViewModel.getWeather", e?.message ?: "Error")
                     return@launch
                 }
@@ -232,6 +229,17 @@ class WeatherViewModel @Inject constructor(
         if (lat == null || lon == null) return
         getWeather(lat, lon)
         refreshCities()
+    }
+
+    @RequiresPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+    fun retryLastRequest() {
+        val lat = currentLocationLat
+        val lon = currentLocationLon
+        if (lat != null && lon != null) {
+            getWeather(lat, lon)
+        } else {
+            getCurrentLocation()
+        }
     }
 
     private fun refreshCities() {
@@ -266,30 +274,32 @@ class WeatherViewModel @Inject constructor(
                     savedCity = city,
                     temperature = previous?.temperature,
                     icon = previous?.icon,
-                    timezone = previous?.timezone
+                    timezone = previous?.timezone,
+                    isStale = previous?.isStale ?: false
                 )
             }
 
             _cities.value = currentLocationItem + favoriteItems
 
-            _cities.value.filter { it.temperature == null }.forEach { item ->
+            _cities.value.forEach { item ->
                 launch {
-                    getWeatherUseCase(item.lat, item.lon).onSuccess { weather ->
-                        updateCityWeather(item.lat, item.lon, weather)
+                    getWeatherWithCacheUseCase(item.lat, item.lon).onSuccess { result ->
+                        updateCityWeather(item.lat, item.lon, result.weather, result.isStale)
                     }
                 }
             }
         }
     }
 
-    private fun updateCityWeather(lat: Double, lon: Double, weather: Weather) {
+    private fun updateCityWeather(lat: Double, lon: Double, weather: Weather, isStale: Boolean) {
         _cities.value = _cities.value.map { item ->
             if (item.lat == lat && item.lon == lon) {
                 item.copy(
                     name = if (item.isCurrentLocation) weather.city ?: item.name else item.name,
                     temperature = weather.temperature.toInt(),
                     icon = weather.icon,
-                    timezone = weather.timezone
+                    timezone = weather.timezone,
+                    isStale = isStale
                 )
             } else item
         }

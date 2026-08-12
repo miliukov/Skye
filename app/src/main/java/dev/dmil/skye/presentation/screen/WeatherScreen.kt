@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -86,6 +87,7 @@ import kotlin.collections.forEachIndexed
 import kotlin.collections.lastIndex
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.style.TextAlign
+import dev.dmil.skye.presentation.ui.theme.Orange
 
 @Composable
 fun WeatherScreen(
@@ -221,7 +223,8 @@ fun WeatherScreen(
                                     selectedDayIndex = index
                                     showDayDetail = true
                                 },
-                                units = units.value
+                                units = units.value,
+                                isStale = state.isStale
                             )
                         }
 
@@ -236,7 +239,8 @@ fun WeatherScreen(
                                         selectedDayIndex = index
                                         showDayDetail = true
                                     },
-                                    units = units.value
+                                    units = units.value,
+                                    isStale = state.isStale
                                 )
                                 Box(
                                     modifier = Modifier
@@ -247,7 +251,10 @@ fun WeatherScreen(
                         }
 
                         is WeatherUiState.Error -> {
-                            ErrorContent(error = state.error)
+                            ErrorContent(
+                                error = state.error,
+                                onRetry = viewModel::retryLastRequest
+                            )
                         }
                     }
                     DayDetailOverlay(
@@ -313,7 +320,8 @@ fun WeatherContent(
     weeklyForecast: List<DailyForecast>,
     onOpenCities: () -> Unit,
     onDayClick: (Int) -> Unit,
-    units: Units
+    units: Units,
+    isStale: Boolean
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val maxHeightPx = constraints.maxHeight
@@ -345,7 +353,8 @@ fun WeatherContent(
                     temp = weather.temperature.toInt(),
                     iconId = weather.icon,
                     onSwipeDown = onOpenCities,
-                    units = units
+                    units = units,
+                    isStale = isStale
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 ForecastCarousel(weather = weather, forecast = forecast, units = units)
@@ -377,7 +386,8 @@ fun Header(
     temp: Int,
     iconId: String,
     onSwipeDown: () -> Unit,
-    units: Units
+    units: Units,
+    isStale: Boolean
 ) {
     val onBackground = MaterialTheme.colorScheme.onBackground
     val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -417,13 +427,24 @@ fun Header(
                     modifier = Modifier.size(130.dp),
                     tint = weatherIconTint(icon, isDarkBackground)
                 )
-                Text(
-                    text = cityName,
-                    fontSize = 40.sp,
-                    lineHeight = 44.sp,
-                    textAlign = TextAlign.Center,
-                    color = onBackground
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = cityName,
+                        fontSize = 40.sp,
+                        lineHeight = 44.sp,
+                        textAlign = TextAlign.Center,
+                        color = onBackground
+                    )
+                    if (isStale) {
+                        Spacer(modifier = Modifier.size(6.dp))
+                        Icon(
+                            imageVector = Icons.Filled.CloudOff,
+                            contentDescription = stringResource(R.string.stale_data_content_description),
+                            tint = Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
                 Text(text = formatTemperature(temperature, units), fontSize = 80.sp, color = onBackground)
             }
         }
@@ -569,18 +590,32 @@ private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit, units: Uni
 }
 
 @Composable
-fun ErrorContent(error: WeatherError) {
+fun ErrorContent(error: WeatherError, onRetry: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = errorMessage(error))
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = errorMessage(error),
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.error_retry),
+                color = Orange,
+                fontSize = 15.sp,
+                modifier = Modifier.clickable(onClick = onRetry)
+            )
+        }
     }
 }
 
 @Composable
 fun errorMessage(error: WeatherError): String = when (error) {
     WeatherError.LocationPermissionDenied -> stringResource(R.string.error_location_permission_denied)
+    WeatherError.LocationUnavailable -> stringResource(R.string.error_location_unavailable)
     WeatherError.ServerError -> stringResource(R.string.error_server)
     WeatherError.NoInternet -> stringResource(R.string.error_no_internet)
     WeatherError.InvalidCityName -> stringResource(R.string.error_invalid_city_name)
