@@ -68,4 +68,6 @@
     <string name="error_retry">Повторить</string>
 
     <string name="settings_privacy_policy_link">Политика конфиденциальности</string>
+
+    <string name="settings_app_version">Версия %1$s</string>
 </resources>

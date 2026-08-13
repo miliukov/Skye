@@ -69,6 +69,7 @@ import dev.dmil.skye.presentation.ui.theme.Orange
 import kotlinx.coroutines.launch
 import java.util.Locale
 import androidx.core.net.toUri
+import dev.dmil.skye.BuildConfig
 
 @Composable
 fun SettingsOverlay(
@@ -382,7 +383,11 @@ fun SettingsOverlay(
                             color = Gray
                         )
                     }
-
+                    Text(
+                        text = stringResource(R.string.settings_app_version, BuildConfig.VERSION_NAME),
+                        fontSize = 12.sp,
+                        color = Gray
+                    )
                     Spacer(modifier = Modifier.height(20.dp))
                 }
             }

@@ -53,6 +53,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -128,7 +129,7 @@ fun WeatherScreen(
     BackHandler(enabled = showCities) {
         showCities = false
     }
-    var selectedDayIndex by remember { mutableStateOf(0) }
+    var selectedDayIndex by remember { mutableIntStateOf(0) }
     var showDayDetail by remember { mutableStateOf(false) }
 
     val themeMode = settingsViewModel.themeMode.collectAsState()
@@ -325,7 +326,7 @@ fun WeatherContent(
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val maxHeightPx = constraints.maxHeight
-        var contentHeightPx by remember { mutableStateOf(0) }
+        var contentHeightPx by remember { mutableIntStateOf(0) }
         val needsScroll = contentHeightPx > maxHeightPx
         val scrollState = rememberScrollState()
 
