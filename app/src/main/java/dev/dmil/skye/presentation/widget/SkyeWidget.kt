@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
+import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
@@ -44,12 +45,15 @@ class SkyeWidget : GlanceAppWidget() {
             val description = prefs[WidgetPrefKeys.DESCRIPTION]
             val lastUpdated = prefs[WidgetPrefKeys.LAST_UPDATED]
 
+            val primaryColor = ColorProvider(day = Color(0xFF2B2829), night = Color(0xFFF5F5F5))
+            val secondaryColor = ColorProvider(day = Color(0xFF6F6F6F), night = Color(0xFF9A9A9A))
+
             Column(
                 modifier = GlanceModifier
                     .fillMaxSize()
                     .background(
                         day = Color(0xFFF5F5F5),
-                        night = Color(0xFFF5F5F5)
+                        night = Color(0xFF2B2829)
                     )
                     .cornerRadius(20.dp)
                     .padding(12.dp)
@@ -58,12 +62,12 @@ class SkyeWidget : GlanceAppWidget() {
                 if (cityName == null) {
                     Text(
                         text = context.getString(R.string.widget_tap_to_setup),
-                        style = TextStyle(fontSize = 13.sp, color = ColorProvider(day = Color(0xFF2B2829), night = Color(0xFF2B2829)))
+                        style = TextStyle(fontSize = 13.sp, color = primaryColor)
                     )
                 } else {
                     Text(
                         text = cityName,
-                        style = TextStyle(fontSize = 15.sp, color = ColorProvider(day = Color(0xFF2B2829), night = Color(0xFF2B2829)))
+                        style = TextStyle(fontSize = 15.sp, color = primaryColor)
                     )
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
@@ -74,13 +78,16 @@ class SkyeWidget : GlanceAppWidget() {
                                 Image(
                                     provider = ImageProvider(getWidgetIconRes(it)),
                                     contentDescription = null,
-                                    modifier = GlanceModifier.size(40.dp)
+                                    modifier = GlanceModifier.size(40.dp),
+                                    colorFilter = if (it != "01d") {
+                                        ColorFilter.tint(ColorProvider(day = Color(0xFF2B2829), night = Color(0xFFF5F5F5)))
+                                    } else null
                                 )
                             }
                             description?.let {
                                 Text(
                                     text = truncate(it, 14),
-                                    style = TextStyle(fontSize = 9.sp, color = ColorProvider(day = Color(0xFF6F6F6F), night = Color(0xFF6F6F6F)))
+                                    style = TextStyle(fontSize = 9.sp, color = secondaryColor)
                                 )
                             }
                         }
@@ -90,13 +97,13 @@ class SkyeWidget : GlanceAppWidget() {
                                 style = TextStyle(
                                     fontSize = 32.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = ColorProvider(day = Color(0xFF2B2829), night = Color(0xFF2B2829))
+                                    color = primaryColor
                                 )
                             )
                             lastUpdated?.let {
                                 Text(
                                     text = formatUpdatedAgo(context, it),
-                                    style = TextStyle(fontSize = 10.sp, color = ColorProvider(day = Color(0xFF6F6F6F), night = Color(0xFF6F6F6F)))
+                                    style = TextStyle(fontSize = 10.sp, color = secondaryColor)
                                 )
                             }
                         }
@@ -116,8 +123,13 @@ private fun getWidgetIconRes(iconId: String): Int = when (iconId) {
     "01n" -> R.drawable.wi_night_clear
     "02d" -> R.drawable.wi_day_cloudy
     "02n" -> R.drawable.wi_night_cloudy
-    "03d", "03n", "04d", "04n" -> R.drawable.wi_cloudy
+    "03d", "03n" -> R.drawable.wi_cloud
+    "04d", "04n" -> R.drawable.wi_cloudy
+    "09d", "09n" -> R.drawable.wi_rain
     "10d" -> R.drawable.wi_day_rain
+    "10n" -> R.drawable.wi_night_rain
+    "11d", "11n" -> R.drawable.wi_thunderstorm
+    "13d", "13n" -> R.drawable.wi_snow
     else -> R.drawable.wi_na
 }
 

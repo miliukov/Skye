@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -49,8 +51,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -103,7 +107,7 @@ fun SettingsOverlay(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .fillMaxHeight(0.85f)
+                .fillMaxHeight(0.95f)
         ) {
             val onBackground = MaterialTheme.colorScheme.onBackground
 
@@ -345,6 +349,39 @@ fun SettingsOverlay(
                         label = "contact@dmil.dev",
                         onClick = { sendEmail(context, "contact@dmil.dev") }
                     )
+                    LinkRow(
+                        icon = Icons.Filled.PrivacyTip,
+                        label = stringResource(R.string.settings_privacy_policy_link),
+                        onClick = { openUrl(context, "https://www.dmil.dev/projects/skye-privacy") }
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.5f
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { openUrl(context, "https://openweathermap.org/") }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(
+                                if (isDarkBackground) R.drawable.openweather_logo_dark
+                                else R.drawable.openweather_logo_light
+                            ),
+                            contentDescription = "OpenWeather",
+                            modifier = Modifier.height(50.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.settings_attribution_text),
+                            fontSize = 12.sp,
+                            color = Gray
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(20.dp))
                 }

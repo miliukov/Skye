@@ -66,4 +66,6 @@
 
     <string name="error_location_unavailable">Не удалось определить местоположение</string>
     <string name="error_retry">Повторить</string>
+
+    <string name="settings_privacy_policy_link">Политика конфиденциальности</string>
 </resources>

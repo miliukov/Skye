@@ -68,4 +68,8 @@
 
     <string name="error_location_unavailable">Couldn\'t determine your location</string>
     <string name="error_retry">Retry</string>
+
+    <string name="settings_privacy_policy_link">Privacy Policy</string>
+
+    <string name="settings_attribution_text" translatable="false">Weather data provided by OpenWeather</string>
 </resources>
