@@ -10,6 +10,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -21,6 +22,7 @@ import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
@@ -47,6 +49,7 @@ class SkyeWidget : GlanceAppWidget() {
 
             val primaryColor = ColorProvider(day = Color(0xFF2B2829), night = Color(0xFFF5F5F5))
             val secondaryColor = ColorProvider(day = Color(0xFF6F6F6F), night = Color(0xFF9A9A9A))
+            val isCompact = LocalSize.current.height < 70.dp
 
             Column(
                 modifier = GlanceModifier
@@ -56,55 +59,93 @@ class SkyeWidget : GlanceAppWidget() {
                         night = Color(0xFF2B2829)
                     )
                     .cornerRadius(20.dp)
-                    .padding(12.dp)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
                     .clickable(actionStartActivity<MainActivity>())
             ) {
-                if (cityName == null) {
-                    Text(
-                        text = context.getString(R.string.widget_tap_to_setup),
-                        style = TextStyle(fontSize = 13.sp, color = primaryColor)
-                    )
-                } else {
-                    Text(
-                        text = cityName,
-                        style = TextStyle(fontSize = 15.sp, color = primaryColor)
-                    )
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = GlanceModifier.defaultWeight()) {
-                            icon?.let {
-                                Image(
-                                    provider = ImageProvider(getWidgetIconRes(it)),
-                                    contentDescription = null,
-                                    modifier = GlanceModifier.size(40.dp),
-                                    colorFilter = if (it != "01d") {
-                                        ColorFilter.tint(ColorProvider(day = Color(0xFF2B2829), night = Color(0xFFF5F5F5)))
-                                    } else null
-                                )
-                            }
-                            description?.let {
+                when {
+                    cityName == null -> {
+                        Text(
+                            text = context.getString(R.string.widget_tap_to_setup),
+                            style = TextStyle(fontSize = 13.sp, color = primaryColor)
+                        )
+                    }
+
+                    isCompact -> {
+                        Column(modifier = GlanceModifier.fillMaxSize()) {
+                            Text(
+                                text = cityName,
+                                maxLines = 1,
+                                style = TextStyle(fontSize = 14.sp, color = primaryColor)
+                            )
+                            Row(
+                                modifier = GlanceModifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                icon?.let {
+                                    Image(
+                                        provider = ImageProvider(getWidgetIconRes(it)),
+                                        contentDescription = null,
+                                        modifier = GlanceModifier.size(26.dp),
+                                        colorFilter = if (it != "01d") {
+                                            ColorFilter.tint(ColorProvider(day = Color(0xFF2B2829), night = Color(0xFFF5F5F5)))
+                                        } else null
+                                    )
+                                }
+                                Spacer(modifier = GlanceModifier.defaultWeight())
                                 Text(
-                                    text = truncate(it, 14),
-                                    style = TextStyle(fontSize = 9.sp, color = secondaryColor)
+                                    text = temperature?.let { "${it.toInt()}º" } ?: "…",
+                                    style = TextStyle(
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = primaryColor
+                                    )
                                 )
                             }
                         }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = temperature?.let { "${it.toInt()}º" } ?: "…",
-                                style = TextStyle(
-                                    fontSize = 32.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = primaryColor
-                                )
-                            )
-                            lastUpdated?.let {
+                    }
+
+                    else -> {
+                        Text(
+                            text = cityName,
+                            style = TextStyle(fontSize = 15.sp, color = primaryColor)
+                        )
+                        Row(
+                            modifier = GlanceModifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = GlanceModifier.defaultWeight()) {
+                                icon?.let {
+                                    Image(
+                                        provider = ImageProvider(getWidgetIconRes(it)),
+                                        contentDescription = null,
+                                        modifier = GlanceModifier.size(40.dp),
+                                        colorFilter = if (it != "01d") {
+                                            ColorFilter.tint(ColorProvider(day = Color(0xFF2B2829), night = Color(0xFFF5F5F5)))
+                                        } else null
+                                    )
+                                }
+                                description?.let {
+                                    Text(
+                                        text = truncate(it, 14),
+                                        style = TextStyle(fontSize = 9.sp, color = secondaryColor)
+                                    )
+                                }
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    text = formatUpdatedAgo(context, it),
-                                    style = TextStyle(fontSize = 10.sp, color = secondaryColor)
+                                    text = temperature?.let { "${it.toInt()}º" } ?: "…",
+                                    style = TextStyle(
+                                        fontSize = 32.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = primaryColor
+                                    )
                                 )
+                                lastUpdated?.let {
+                                    Text(
+                                        text = formatUpdatedAgo(context, it),
+                                        style = TextStyle(fontSize = 10.sp, color = secondaryColor)
+                                    )
+                                }
                             }
                         }
                     }

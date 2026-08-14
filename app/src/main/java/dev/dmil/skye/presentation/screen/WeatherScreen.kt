@@ -23,7 +23,6 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,7 +40,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.LocationOff
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -62,8 +64,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -89,6 +91,7 @@ import kotlin.collections.lastIndex
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.style.TextAlign
 import dev.dmil.skye.presentation.ui.theme.Orange
+import dev.dmil.skye.presentation.util.isCompactWidth
 
 @Composable
 fun WeatherScreen(
@@ -324,59 +327,38 @@ fun WeatherContent(
     units: Units,
     isStale: Boolean
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val maxHeightPx = constraints.maxHeight
-        var contentHeightPx by remember { mutableIntStateOf(0) }
-        val needsScroll = contentHeightPx > maxHeightPx
-        val scrollState = rememberScrollState()
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(horizontal = 15.dp)
-                .then(if (needsScroll) Modifier.verticalScroll(scrollState) else Modifier),
-            horizontalAlignment = Alignment.CenterHorizontally
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 15.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Header(
+            city = weather.city!!,
+            temp = weather.temperature.toInt(),
+            iconId = weather.icon,
+            onSwipeDown = onOpenCities,
+            units = units,
+            isStale = isStale
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        ForecastCarousel(weather = weather, forecast = forecast, units = units)
+        Spacer(modifier = Modifier.height(16.dp))
+        WeeklyForecastList(forecast = weeklyForecast, onDayClick = onDayClick, units = units)
+        Spacer(modifier = Modifier.height(14.dp))
+        IconButton(
+            onClick = onOpenCities,
+            modifier = Modifier.align(Alignment.End)
         ) {
-            if (!needsScroll) {
-                Spacer(modifier = Modifier.weight(1f))
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onSizeChanged { contentHeightPx = it.height },
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Header(
-                    city = weather.city!!,
-                    temp = weather.temperature.toInt(),
-                    iconId = weather.icon,
-                    onSwipeDown = onOpenCities,
-                    units = units,
-                    isStale = isStale
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                ForecastCarousel(weather = weather, forecast = forecast, units = units)
-                Spacer(modifier = Modifier.height(16.dp))
-                WeeklyForecastList(forecast = weeklyForecast, onDayClick = onDayClick, units = units)
-                Spacer(modifier = Modifier.height(14.dp))
-                IconButton(
-                    onClick = onOpenCities,
-                    modifier = Modifier.align(Alignment.End)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.List,
-                        contentDescription = stringResource(R.string.home_open_cities_content_description),
-                        tint = Gray
-                    )
-                }
-            }
-
-            if (needsScroll) {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
+            Icon(
+                imageVector = Icons.Filled.List,
+                contentDescription = stringResource(R.string.home_open_cities_content_description),
+                tint = Gray
+            )
         }
     }
 }
@@ -392,6 +374,12 @@ fun Header(
 ) {
     val onBackground = MaterialTheme.colorScheme.onBackground
     val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val compact = isCompactWidth()
+
+    val iconSize = if (compact) 110.dp else 130.dp
+    val cityFontSize = if (compact) 34.sp else 40.sp
+    val cityLineHeight = if (compact) 38.sp else 44.sp
+    val tempFontSize = if (compact) 68.sp else 80.sp
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -425,14 +413,14 @@ fun Header(
                 Icon(
                     painter = painterResource(getCorrectConditionIcon(icon)),
                     contentDescription = stringResource(R.string.header_weather_icon_content_description),
-                    modifier = Modifier.size(130.dp),
+                    modifier = Modifier.size(iconSize),
                     tint = weatherIconTint(icon, isDarkBackground)
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = cityName,
-                        fontSize = 40.sp,
-                        lineHeight = 44.sp,
+                        fontSize = cityFontSize,
+                        lineHeight = cityLineHeight,
                         textAlign = TextAlign.Center,
                         color = onBackground
                     )
@@ -446,7 +434,7 @@ fun Header(
                         )
                     }
                 }
-                Text(text = formatTemperature(temperature, units), fontSize = 80.sp, color = onBackground)
+                Text(text = formatTemperature(temperature, units), fontSize = tempFontSize, color = onBackground)
             }
         }
     }
@@ -456,6 +444,11 @@ fun Header(
 fun ForecastCarousel(weather: Weather, forecast: List<Weather>, units: Units) {
     val onBackground = MaterialTheme.colorScheme.onBackground
     val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val compact = isCompactWidth()
+
+    val iconSize = if (compact) 34.dp else 40.dp
+    val hourFontSize = if (compact) 13.sp else 15.sp
+    val tempFontSize = if (compact) 17.sp else 20.sp
 
     AnimatedContent(
         targetState = listOf(weather) + forecast,
@@ -474,18 +467,18 @@ fun ForecastCarousel(weather: Weather, forecast: List<Weather>, units: Units) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = if (index == 0) stringResource(R.string.forecast_now) else "${unixToHour(w.date, w.timezone)}",
-                        fontSize = 15.sp,
+                        fontSize = hourFontSize,
                         color = onBackground
                     )
                     Icon(
                         painter = painterResource(getCorrectConditionIcon(w.icon)),
                         contentDescription = "",
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(iconSize),
                         tint = weatherIconTint(w.icon, isDarkBackground)
                     )
                     Text(
                         text = formatTemperature(w.temperature, units),
-                        fontSize = 20.sp,
+                        fontSize = tempFontSize,
                         color = onBackground
                     )
                 }
@@ -506,7 +499,7 @@ fun WeeklyForecastList(forecast: List<DailyForecast>, onDayClick: (Int) -> Unit,
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 10.dp)
         ) {
             days.forEachIndexed { index, day ->
                 DailyForecastRow(day, onClick = { onDayClick(index) }, units = units)
@@ -522,12 +515,20 @@ fun WeeklyForecastList(forecast: List<DailyForecast>, onDayClick: (Int) -> Unit,
 private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit, units: Units) {
     val onBackground = MaterialTheme.colorScheme.onBackground
     val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val compact = isCompactWidth()
+
+    val dayLabelWidth = if (compact) 82.dp else 96.dp
+    val rowFontSize = if (compact) 19.sp else 22.sp
+    val windFontSize = if (compact) 15.sp else 18.sp
+    val conditionIconSize = if (compact) 27.dp else 32.dp
+    val windCircleSize = if (compact) 26.dp else 30.dp
+    val windArrowSize = if (compact) 14.dp else 16.dp
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 16.dp),
+            .padding(vertical = if (compact) 10.dp else 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         val isToday = day.date == java.time.LocalDate.now()
@@ -539,11 +540,11 @@ private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit, units: Uni
                     .getDisplayName(java.time.format.TextStyle.SHORT, LocalLocale.current.platformLocale)
                     .replaceFirstChar { it.uppercase() }
             },
-            fontSize = 22.sp,
+            fontSize = rowFontSize,
             fontWeight = FontWeight.Normal,
             color = onBackground,
             maxLines = 1,
-            modifier = Modifier.width(96.dp)
+            modifier = Modifier.width(dayLabelWidth)
         )
         Row(
             modifier = Modifier.weight(1f),
@@ -553,19 +554,19 @@ private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit, units: Uni
             Icon(
                 painter = painterResource(getCorrectConditionIcon(day.icon)),
                 contentDescription = null,
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier.size(conditionIconSize),
                 tint = weatherIconTint(day.icon, isDarkBackground)
             )
             Text(
                 text = "${formatTemperature(day.minTemp, units)} – ${formatTemperature(day.maxTemp, units)}",
-                fontSize = 22.sp,
+                fontSize = rowFontSize,
                 fontWeight = FontWeight.Normal,
                 color = onBackground
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(windCircleSize)
                         .border(1.5.dp, onBackground, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -574,14 +575,14 @@ private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit, units: Uni
                         contentDescription = null,
                         tint = onBackground,
                         modifier = Modifier
-                            .size(16.dp)
+                            .size(windArrowSize)
                             .rotate(day.windDegree.toFloat())
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = formatWindSpeed(day.windSpeed, units),
-                    fontSize = 18.sp,
+                    fontSize = windFontSize,
                     fontWeight = FontWeight.Normal,
                     color = onBackground
                 )
@@ -597,6 +598,13 @@ fun ErrorContent(error: WeatherError, onRetry: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = errorIcon(error),
+                contentDescription = null,
+                tint = Gray,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = errorMessage(error),
                 textAlign = TextAlign.Center,
@@ -616,11 +624,22 @@ fun ErrorContent(error: WeatherError, onRetry: () -> Unit) {
 @Composable
 fun errorMessage(error: WeatherError): String = when (error) {
     WeatherError.LocationPermissionDenied -> stringResource(R.string.error_location_permission_denied)
+    WeatherError.LocationServicesDisabled -> stringResource(R.string.error_location_services_disabled)
     WeatherError.LocationUnavailable -> stringResource(R.string.error_location_unavailable)
     WeatherError.ServerError -> stringResource(R.string.error_server)
     WeatherError.NoInternet -> stringResource(R.string.error_no_internet)
     WeatherError.InvalidCityName -> stringResource(R.string.error_invalid_city_name)
     WeatherError.Unknown -> stringResource(R.string.error_unknown)
+}
+
+fun errorIcon(error: WeatherError): ImageVector = when (error) {
+    WeatherError.LocationPermissionDenied -> Icons.Filled.LocationOff
+    WeatherError.LocationServicesDisabled -> Icons.Filled.LocationOff
+    WeatherError.LocationUnavailable -> Icons.Filled.LocationOff
+    WeatherError.ServerError -> Icons.Filled.ErrorOutline
+    WeatherError.NoInternet -> Icons.Filled.WifiOff
+    WeatherError.InvalidCityName -> Icons.Filled.ErrorOutline
+    WeatherError.Unknown -> Icons.Filled.CloudOff
 }
 
 fun getCorrectConditionIcon(id: String): Int {

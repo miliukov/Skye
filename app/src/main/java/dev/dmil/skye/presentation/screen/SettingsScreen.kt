@@ -70,6 +70,7 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import androidx.core.net.toUri
 import dev.dmil.skye.BuildConfig
+import dev.dmil.skye.presentation.util.isCompactWidth
 
 @Composable
 fun SettingsOverlay(
@@ -138,7 +139,12 @@ fun SettingsOverlay(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = stringResource(R.string.settings_title), fontSize = 24.sp, color = onBackground)
+                    val compact = isCompactWidth()
+                    Text(
+                        text = stringResource(R.string.settings_title),
+                        fontSize = if (compact) 20.sp else 24.sp,
+                        color = onBackground
+                    )
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Filled.Close,
@@ -374,7 +380,7 @@ fun SettingsOverlay(
                                 else R.drawable.openweather_logo_light
                             ),
                             contentDescription = "OpenWeather",
-                            modifier = Modifier.height(50.dp)
+                            modifier = Modifier.height(if (isCompactWidth()) 38.dp else 50.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -437,6 +443,7 @@ private fun <T> SegmentedControl(
 ) {
     val onBackground = MaterialTheme.colorScheme.onBackground
     val background = MaterialTheme.colorScheme.background
+    val compact = isCompactWidth()
 
     Row(
         modifier = Modifier
@@ -451,12 +458,12 @@ private fun <T> SegmentedControl(
                     .weight(1f)
                     .background(if (isSelected) onBackground else Color.Transparent)
                     .clickable { onSelect(option) }
-                    .padding(vertical = 12.dp),
+                    .padding(vertical = if (compact) 9.dp else 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = labelFor(option),
-                    fontSize = 14.sp,
+                    fontSize = if (compact) 12.sp else 14.sp,
                     color = if (isSelected) background else onBackground
                 )
             }

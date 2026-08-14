@@ -42,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -61,6 +62,7 @@ import dev.dmil.skye.presentation.ui.theme.Gray
 import dev.dmil.skye.presentation.ui.theme.Orange
 import dev.dmil.skye.presentation.ui.theme.White
 import dev.dmil.skye.presentation.util.formatTemperature
+import dev.dmil.skye.presentation.util.isCompactWidth
 
 @Composable
 fun CitiesScreen(
@@ -78,12 +80,14 @@ fun CitiesScreen(
     units: Units,
     modifier: Modifier = Modifier
 ) {
+    val compact = isCompactWidth()
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = if (compact) 18.dp else 24.dp)
             .padding(top = 10.dp, bottom = 20.dp)
     ) {
         Row(
@@ -92,7 +96,7 @@ fun CitiesScreen(
         ) {
             Text(
                 text = "Skye",
-                fontSize = 52.sp,
+                fontSize = if (compact) 42.sp else 52.sp,
                 color = MaterialTheme.colorScheme.onBackground,
                 letterSpacing = (-2).sp,
                 modifier = Modifier.weight(1f)
@@ -178,6 +182,8 @@ private fun CityCardContent(
     onClick: () -> Unit,
     units: Units
 ) {
+    val compact = isCompactWidth()
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -185,19 +191,19 @@ private fun CityCardContent(
             .background(bg)
             .border(2.dp, fg, shape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .padding(horizontal = 10.dp, vertical = if (compact) 8.dp else 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = item.name, fontSize = 28.sp, color = fg)
+                Text(text = item.name, fontSize = if (compact) 22.sp else 28.sp, color = fg)
                 if (item.isCurrentLocation) {
                     Spacer(modifier = Modifier.size(6.dp))
                     Icon(
                         imageVector = Icons.Filled.LocationOn,
                         contentDescription = stringResource(R.string.cities_current_location_content_description),
                         tint = Orange,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(if (compact) 15.dp else 18.dp)
                     )
                 }
                 if (item.isStale) {
@@ -206,13 +212,13 @@ private fun CityCardContent(
                         imageVector = Icons.Filled.CloudOff,
                         contentDescription = stringResource(R.string.stale_data_content_description),
                         tint = fg.copy(alpha = 0.6f),
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(if (compact) 13.dp else 16.dp)
                     )
                 }
             }
             Text(
                 text = formatLocalTime(item.timezone),
-                fontSize = 20.sp,
+                fontSize = if (compact) 16.sp else 20.sp,
                 fontWeight = FontWeight.Light,
                 color = fg
             )
@@ -223,10 +229,10 @@ private fun CityCardContent(
                 painter = painterResource(getCorrectConditionIcon(item.icon)),
                 contentDescription = null,
                 tint = if (isNight(item)) White else androidx.compose.ui.graphics.Color.Unspecified,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(if (compact) 38.dp else 48.dp)
             )
             Spacer(modifier = Modifier.size(14.dp))
-            Text(text = formatTemperature(item.temperature, units), fontSize = 36.sp, color = fg)
+            Text(text = formatTemperature(item.temperature, units), fontSize = if (compact) 29.sp else 36.sp, color = fg)
         } else {
             CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),
@@ -256,6 +262,7 @@ fun CitySearchBar(
                 .background(MaterialTheme.colorScheme.background)
                 .border(2.dp, onBackground, RoundedCornerShape(14.dp))
         ) {
+            val compact = isCompactWidth()
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,
@@ -263,8 +270,8 @@ fun CitySearchBar(
                     .fillMaxWidth()
                     .padding(horizontal = 10.dp, vertical = 10.dp),
                 singleLine = true,
-                textStyle = TextStyle(fontSize = 18.sp, color = onBackground),
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(Orange),
+                textStyle = TextStyle(fontSize = if (compact) 16.sp else 18.sp, color = onBackground),
+                cursorBrush = SolidColor(Orange),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Search
@@ -272,7 +279,7 @@ fun CitySearchBar(
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
                 decorationBox = { innerTextField ->
                     if (query.isEmpty()) {
-                        Text(text = stringResource(R.string.cities_search_placeholder), fontSize = 18.sp, color = Gray)
+                        Text(text = stringResource(R.string.cities_search_placeholder), fontSize = if (compact) 16.sp else 18.sp, color = Gray)
                     }
                     innerTextField()
                 }

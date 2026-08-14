@@ -2,13 +2,17 @@ package dev.dmil.skye.presentation.viewmodel
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
+import android.location.LocationManager
 import android.util.Log
 import androidx.annotation.RequiresPermission
+import androidx.core.location.LocationManagerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.dmil.skye.domain.model.GeocodingResult
 import dev.dmil.skye.domain.model.SavedCity
 import dev.dmil.skye.domain.model.Weather
@@ -43,6 +47,7 @@ class WeatherViewModel @Inject constructor(
     private val addSavedCityUseCase: AddSavedCityUseCase,
     private val deleteSavedCityUseCase: DeleteSavedCityUseCase,
     private val fusedLocationProviderClient: FusedLocationProviderClient,
+    @param:ApplicationContext private val context: Context,
     private val testApiKeyUseCase: TestApiKeyUseCase,
 ) : ViewModel() {
 
@@ -94,11 +99,19 @@ class WeatherViewModel @Inject constructor(
     @RequiresPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
     fun getCurrentLocation() {
         Log.d("WeatherViewModel", "Requesting location...")
+
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        if (!LocationManagerCompat.isLocationEnabled(locationManager)) {
+            Log.e("WeatherViewModel.getCurrentLocation", "Location services are disabled")
+            _uiState.value = WeatherUiState.Error(WeatherError.LocationServicesDisabled)
+            return
+        }
+
         viewModelScope.launch {
             val location = try {
                 withTimeoutOrNull(20_000L.milliseconds) {
                     fusedLocationProviderClient
-                        .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                        .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                         .await()
                 }
             } catch (e: Exception) {

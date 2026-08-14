@@ -67,6 +67,7 @@
     <string name="stale_data_content_description">Showing offline data</string>
 
     <string name="error_location_unavailable">Couldn\'t determine your location</string>
+    <string name="error_location_services_disabled">Location services are turned off</string>
     <string name="error_retry">Retry</string>
 
     <string name="settings_privacy_policy_link">Privacy Policy</string>

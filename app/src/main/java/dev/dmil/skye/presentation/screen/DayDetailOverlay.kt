@@ -11,6 +11,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +58,7 @@ import dev.dmil.skye.presentation.util.formatWindSpeed
 import java.time.format.TextStyle as DateTextStyle
 import kotlin.collections.mapIndexed
 import androidx.compose.ui.platform.LocalLocale
+import dev.dmil.skye.presentation.util.isCompactWidth
 
 @Composable
 fun DayDetailOverlay(
@@ -100,40 +103,68 @@ fun DayDetailOverlay(
                     .background(Black, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                     .padding(top = 12.dp, start = 16.dp, end = 16.dp)
             ) {
-                Box(
+                Column(
                     modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .width(36.dp)
-                        .height(4.dp)
-                        .background(Gray.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        days.forEachIndexed { index, d ->
-                            DatePill(
-                                day = d,
-                                isToday = d.date == java.time.LocalDate.now(),
-                                isSelected = index == selectedIndex,
-                                onClick = { onDaySelected(index) }
+                        .fillMaxWidth()
+                        .pointerInput(Unit) {
+                            var accumulatedDrag = 0f
+                            detectVerticalDragGestures(
+                                onDragStart = { accumulatedDrag = 0f },
+                                onVerticalDrag = { change, dragAmount ->
+                                    accumulatedDrag += dragAmount
+                                    if (accumulatedDrag > 80f) {
+                                        onDismiss()
+                                        accumulatedDrag = 0f
+                                    }
+                                    change.consume()
+                                }
                             )
                         }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .width(36.dp)
+                            .height(4.dp)
+                            .background(Gray.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            days.forEachIndexed { index, d ->
+                                DatePill(
+                                    day = d,
+                                    isToday = d.date == java.time.LocalDate.now(),
+                                    isSelected = index == selectedIndex,
+                                    onClick = { onDaySelected(index) }
+                                )
+                            }
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(text = formatTemperature(day.maxTemp, units), fontSize = 60.sp, color = White)
-                    Text(text = formatTemperature(day.minTemp, units), fontSize = 50.sp, color = Gray)
+                    val compact = isCompactWidth()
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = formatTemperature(day.maxTemp, units),
+                            fontSize = if (compact) 52.sp else 60.sp,
+                            color = White
+                        )
+                        Text(
+                            text = formatTemperature(day.minTemp, units),
+                            fontSize = if (compact) 44.sp else 50.sp,
+                            color = Gray
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -161,6 +192,9 @@ private fun DatePill(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val compact = isCompactWidth()
+    val boxSize = if (compact) 30.dp else 34.dp
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -171,19 +205,19 @@ private fun DatePill(
             text = day.date.dayOfWeek
                 .getDisplayName(DateTextStyle.NARROW, LocalLocale.current.platformLocale)
                 .replaceFirstChar { it.uppercase() },
-            fontSize = 16.sp,
+            fontSize = if (compact) 14.sp else 16.sp,
             color = if (isToday) Orange else White.copy(alpha = 0.6f)
         )
         Spacer(modifier = Modifier.height(6.dp))
         Box(
             modifier = Modifier
-                .size(34.dp)
+                .size(boxSize)
                 .then(if (isSelected) Modifier.background(White, CircleShape) else Modifier),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = day.date.dayOfMonth.toString(),
-                fontSize = 22.sp,
+                fontSize = if (compact) 19.sp else 22.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                 color = when {
                     isSelected -> Black
@@ -199,9 +233,10 @@ private fun DatePill(
 fun DayTemperatureGraph(hourly: List<Weather>, units: Units, modifier: Modifier = Modifier) {
     if (hourly.size < 2) return
 
+    val compact = isCompactWidth()
     val textMeasurer = rememberTextMeasurer()
-    val tempStyle = TextStyle(fontSize = 13.sp, color = White)
-    val hourStyle = TextStyle(fontSize = 12.sp, color = Gray)
+    val tempStyle = TextStyle(fontSize = if (compact) 12.sp else 13.sp, color = White)
+    val hourStyle = TextStyle(fontSize = if (compact) 11.sp else 12.sp, color = Gray)
 
     Canvas(
         modifier = modifier
@@ -282,13 +317,14 @@ private fun DayInfoGrid(day: DailyForecast, units: Units) {
 
 @Composable
 private fun InfoCard(label: String, value: String, modifier: Modifier = Modifier) {
+    val compact = isCompactWidth()
     Column(
         modifier = modifier
             .border(1.5.dp, Gray.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-            .padding(16.dp)
+            .padding(if (compact) 12.dp else 16.dp)
     ) {
-        Text(text = label, fontSize = 13.sp, color = Gray)
+        Text(text = label, fontSize = if (compact) 12.sp else 13.sp, color = Gray)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = value, fontSize = 22.sp, color = White)
+        Text(text = value, fontSize = if (compact) 19.sp else 22.sp, color = White)
     }
 }
