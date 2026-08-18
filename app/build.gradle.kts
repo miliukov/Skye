@@ -25,8 +25,8 @@ android {
         applicationId = "dev.dmil.skye"
         minSdk = 30
         targetSdk = 37
-        versionCode = 3
-        versionName = "1.0.1-alpha"
+        versionCode = 4
+        versionName = "1.0.2-alpha"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

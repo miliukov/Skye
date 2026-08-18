@@ -26,10 +26,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -62,10 +64,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -90,8 +96,10 @@ import kotlin.collections.forEachIndexed
 import kotlin.collections.lastIndex
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import dev.dmil.skye.presentation.ui.theme.Orange
 import dev.dmil.skye.presentation.util.isCompactWidth
+import kotlin.math.roundToInt
 
 @Composable
 fun WeatherScreen(
@@ -327,38 +335,69 @@ fun WeatherContent(
     units: Units,
     isStale: Boolean
 ) {
-    Column(
+    var containerCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var headerTopPx by remember { mutableIntStateOf(0) }
+    var headerHeightPx by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 15.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .onGloballyPositioned { containerCoords = it }
     ) {
-        Header(
-            city = weather.city!!,
-            temp = weather.temperature.toInt(),
-            iconId = weather.icon,
-            onSwipeDown = onOpenCities,
-            units = units,
-            isStale = isStale
+        WeatherConditionBackground(
+            icon = weather.icon,
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(0, headerTopPx) }
+                .height(with(density) { headerHeightPx.toDp() })
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        ForecastCarousel(weather = weather, forecast = forecast, units = units)
-        Spacer(modifier = Modifier.height(16.dp))
-        WeeklyForecastList(forecast = weeklyForecast, onDayClick = onDayClick, units = units)
-        Spacer(modifier = Modifier.height(14.dp))
-        IconButton(
-            onClick = onOpenCities,
-            modifier = Modifier.align(Alignment.End)
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 15.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = Icons.Filled.List,
-                contentDescription = stringResource(R.string.home_open_cities_content_description),
-                tint = Gray
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onGloballyPositioned { headerCoords ->
+                        containerCoords?.let { container ->
+                            val relative = container.localPositionOf(headerCoords, Offset.Zero)
+                            headerTopPx = relative.y.roundToInt()
+                            headerHeightPx = headerCoords.size.height
+                        }
+                    }
+            ) {
+                Header(
+                    city = weather.city!!,
+                    temp = weather.temperature.toInt(),
+                    iconId = weather.icon,
+                    onSwipeDown = onOpenCities,
+                    units = units,
+                    isStale = isStale
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            ForecastCarousel(weather = weather, forecast = forecast, units = units)
+            Spacer(modifier = Modifier.height(16.dp))
+            WeeklyForecastList(forecast = weeklyForecast, onDayClick = onDayClick, units = units)
+            Spacer(modifier = Modifier.height(14.dp))
+            IconButton(
+                onClick = onOpenCities,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.List,
+                    contentDescription = stringResource(R.string.home_open_cities_content_description),
+                    tint = Gray
+                )
+            }
         }
     }
 }
@@ -451,7 +490,7 @@ fun ForecastCarousel(weather: Weather, forecast: List<Weather>, units: Units) {
     val tempFontSize = if (compact) 17.sp else 20.sp
 
     AnimatedContent(
-        targetState = listOf(weather) + forecast,
+        targetState = interpolateHourly(listOf(weather) + forecast),
         transitionSpec = {
             fadeIn(tween(280)).togetherWith(fadeOut(tween(160)))
         },
@@ -464,11 +503,30 @@ fun ForecastCarousel(weather: Weather, forecast: List<Weather>, units: Units) {
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             hourly.forEachIndexed { index, w ->
+                val isNewDay = index > 0 && localEpochDay(w) != localEpochDay(hourly[index - 1])
+
+                if (isNewDay) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(1.dp)
+                            .background(onBackground.copy(alpha = 0.2f))
+                    )
+                }
+
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = if (index == 0) stringResource(R.string.forecast_now) else "${unixToHour(w.date, w.timezone)}",
+                        text = when {
+                            index == 0 -> stringResource(R.string.forecast_now)
+                            isNewDay -> java.time.LocalDate.ofEpochDay(localEpochDay(w))
+                                .dayOfWeek
+                                .getDisplayName(java.time.format.TextStyle.SHORT, LocalLocale.current.platformLocale)
+                                .replaceFirstChar { it.uppercase() }
+                            else -> "${unixToHour(w.date, w.timezone)}"
+                        },
                         fontSize = hourFontSize,
-                        color = onBackground
+                        fontWeight = if (isNewDay) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isNewDay) Orange else onBackground
                     )
                     Icon(
                         painter = painterResource(getCorrectConditionIcon(w.icon)),
@@ -485,6 +543,33 @@ fun ForecastCarousel(weather: Weather, forecast: List<Weather>, units: Units) {
             }
         }
     }
+}
+
+private fun localEpochDay(w: Weather): Long = (w.date + w.timezone) / 86400
+
+fun interpolateHourly(points: List<Weather>): List<Weather> {
+    if (points.size < 2) return points
+    val result = mutableListOf<Weather>()
+    for (i in 0 until points.size - 1) {
+        val current = points[i]
+        val next = points[i + 1]
+        result.add(current)
+        val hourGap = ((next.date - current.date) / 3600).toInt()
+        if (hourGap > 1) {
+            for (h in 1 until hourGap) {
+                val fraction = h.toDouble() / hourGap
+                result.add(
+                    current.copy(
+                        temperature = current.temperature + (next.temperature - current.temperature) * fraction,
+                        date = current.date + h * 3600L,
+                        icon = if (fraction < 0.5) current.icon else next.icon
+                    )
+                )
+            }
+        }
+    }
+    result.add(points.last())
+    return result
 }
 
 @Composable
@@ -579,7 +664,14 @@ private fun DailyForecastRow(day: DailyForecast, onClick: () -> Unit, units: Uni
                             .rotate(day.windDegree.toFloat())
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = windDirectionLabel(day.windDegree),
+                    fontSize = windFontSize,
+                    fontWeight = FontWeight.Normal,
+                    color = onBackground
+                )
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = formatWindSpeed(day.windSpeed, units),
                     fontSize = windFontSize,
@@ -657,6 +749,23 @@ fun getCorrectConditionIcon(id: String): Int {
         "13d", "13n" -> R.drawable.wi_snow
         else -> R.drawable.wi_na
     }
+}
+
+@Composable
+fun windDirectionLabel(degree: Int): String {
+    val normalized = ((degree % 360) + 360) % 360
+    val index = ((normalized + 22.5) / 45).toInt() % 8
+    val resId = when (index) {
+        0 -> R.string.wind_direction_n
+        1 -> R.string.wind_direction_ne
+        2 -> R.string.wind_direction_e
+        3 -> R.string.wind_direction_se
+        4 -> R.string.wind_direction_s
+        5 -> R.string.wind_direction_sw
+        6 -> R.string.wind_direction_w
+        else -> R.string.wind_direction_nw
+    }
+    return stringResource(resId)
 }
 
 fun weatherIconTint(iconId: String, isDarkBackground: Boolean): Color {

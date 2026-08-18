@@ -11,6 +11,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +34,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -59,6 +65,7 @@ import java.time.format.TextStyle as DateTextStyle
 import kotlin.collections.mapIndexed
 import androidx.compose.ui.platform.LocalLocale
 import dev.dmil.skye.presentation.util.isCompactWidth
+import kotlin.math.roundToInt
 
 @Composable
 fun DayDetailOverlay(
@@ -167,8 +174,6 @@ fun DayDetailOverlay(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -203,7 +208,7 @@ private fun DatePill(
     ) {
         Text(
             text = day.date.dayOfWeek
-                .getDisplayName(DateTextStyle.NARROW, LocalLocale.current.platformLocale)
+                .getDisplayName(DateTextStyle.SHORT, LocalLocale.current.platformLocale)
                 .replaceFirstChar { it.uppercase() },
             fontSize = if (compact) 14.sp else 16.sp,
             color = if (isToday) Orange else White.copy(alpha = 0.6f)
@@ -237,22 +242,42 @@ fun DayTemperatureGraph(hourly: List<Weather>, units: Units, modifier: Modifier 
     val textMeasurer = rememberTextMeasurer()
     val tempStyle = TextStyle(fontSize = if (compact) 12.sp else 13.sp, color = White)
     val hourStyle = TextStyle(fontSize = if (compact) 11.sp else 12.sp, color = Gray)
+    val bubbleStyle = TextStyle(fontSize = if (compact) 11.sp else 12.sp, fontWeight = FontWeight.Bold, color = Black)
+
+    val interpolated = interpolateHourly(hourly)
+    var touchX by remember { mutableStateOf<Float?>(null) }
 
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(140.dp)
+            .height(150.dp)
+            .pointerInput(interpolated) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
+                    touchX = down.position.x
+                    do {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.pressed }
+                        if (change != null) {
+                            touchX = change.position.x
+                            change.consume()
+                        }
+                    } while (event.changes.any { it.pressed })
+                    touchX = null
+                }
+            }
     ) {
-        val minTemp = hourly.minOf { it.temperature }
-        val maxTemp = hourly.maxOf { it.temperature }
+        val minTemp = interpolated.minOf { it.temperature }
+        val maxTemp = interpolated.maxOf { it.temperature }
         val range = (maxTemp - minTemp).let { if (it == 0.0) 1.0 else it }
 
-        val topPadding = 28.dp.toPx()
+        val topPadding = 52.dp.toPx()
         val bottomPadding = 24.dp.toPx()
         val graphHeight = size.height - topPadding - bottomPadding
-        val stepX = size.width / (hourly.size - 1)
+        val stepX = size.width / (interpolated.size - 1)
 
-        val points = hourly.mapIndexed { index, w ->
+        val points = interpolated.mapIndexed { index, w ->
             val x = index * stepX
             val normalized = ((w.temperature - minTemp) / range).toFloat()
             val y = topPadding + (graphHeight - normalized * graphHeight)
@@ -269,19 +294,58 @@ fun DayTemperatureGraph(hourly: List<Weather>, units: Units, modifier: Modifier 
             )
         }
 
-        points.forEachIndexed { index, point ->
+        interpolated.forEachIndexed { index, w ->
+            val isRealPoint = hourly.any { it.date == w.date }
+            if (!isRealPoint) return@forEachIndexed
+
+            val point = points[index]
             drawCircle(color = Orange, radius = 4.dp.toPx(), center = point)
 
-            val tempLayout = textMeasurer.measure(formatTemperature(hourly[index].temperature, units), tempStyle)
+            val tempLayout = textMeasurer.measure(formatTemperature(w.temperature, units), tempStyle)
             drawText(
                 textLayoutResult = tempLayout,
                 topLeft = Offset(point.x - tempLayout.size.width / 2f, point.y - tempLayout.size.height - 10.dp.toPx())
             )
 
-            val hourLayout = textMeasurer.measure(unixToHour(hourly[index].date, hourly[index].timezone).toString(), hourStyle)
+            val hourLayout = textMeasurer.measure(unixToHour(w.date, w.timezone).toString(), hourStyle)
             drawText(
                 textLayoutResult = hourLayout,
                 topLeft = Offset(point.x - hourLayout.size.width / 2f, size.height - hourLayout.size.height)
+            )
+        }
+
+        touchX?.let { tx ->
+            val index = (tx / stepX).roundToInt().coerceIn(0, interpolated.size - 1)
+            val point = points[index]
+            val touched = interpolated[index]
+
+            drawLine(
+                color = White.copy(alpha = 0.35f),
+                start = Offset(point.x, 28.dp.toPx()),
+                end = Offset(point.x, size.height - bottomPadding),
+                strokeWidth = 1.5.dp.toPx()
+            )
+            drawCircle(color = White, radius = 5.dp.toPx(), center = point)
+            drawCircle(color = Orange, radius = 3.dp.toPx(), center = point)
+
+            val bubbleText = "${formatTemperature(touched.temperature, units)} · ${unixToHour(touched.date, touched.timezone)}:00"
+            val bubbleLayout = textMeasurer.measure(bubbleText, bubbleStyle)
+            val paddingH = 6.dp.toPx()
+            val paddingV = 3.dp.toPx()
+            val bubbleWidth = bubbleLayout.size.width + paddingH * 2
+            val bubbleHeight = bubbleLayout.size.height + paddingV * 2
+            val bubbleX = (point.x - bubbleWidth / 2f).coerceIn(0f, size.width - bubbleWidth)
+            val bubbleY = 4.dp.toPx()
+
+            drawRoundRect(
+                color = White,
+                topLeft = Offset(bubbleX, bubbleY),
+                size = androidx.compose.ui.geometry.Size(bubbleWidth, bubbleHeight),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx())
+            )
+            drawText(
+                textLayoutResult = bubbleLayout,
+                topLeft = Offset(bubbleX + paddingH, bubbleY + paddingV)
             )
         }
     }

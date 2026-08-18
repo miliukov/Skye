@@ -108,8 +108,32 @@ class WeatherViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val location = try {
-                withTimeoutOrNull(20_000L.milliseconds) {
+            var gotAnyLocation = false
+
+            val lastLocation = try {
+                fusedLocationProviderClient.lastLocation.await()
+            } catch (e: Exception) {
+                Log.e("WeatherViewModel.getCurrentLocation", "lastLocation failed: ${e.message}")
+                null
+            }
+
+            if (lastLocation != null) {
+                gotAnyLocation = true
+                Log.d("WeatherViewModel", "Last known location: $lastLocation")
+                currentLocationLat = lastLocation.latitude
+                currentLocationLon = lastLocation.longitude
+                getWeather(
+                    lat = lastLocation.latitude,
+                    lon = lastLocation.longitude,
+                    onWeatherLoaded = { weather ->
+                        currentLocationWeather = weather
+                        refreshCities()
+                    }
+                )
+            }
+
+            val freshLocation = try {
+                withTimeoutOrNull(30_000L.milliseconds) {
                     fusedLocationProviderClient
                         .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                         .await()
@@ -119,23 +143,25 @@ class WeatherViewModel @Inject constructor(
                 null
             }
 
-            if (location == null) {
-                Log.e("WeatherViewModel.getCurrentLocation", "Location unavailable or timed out")
-                _uiState.value = WeatherUiState.Error(WeatherError.LocationUnavailable)
-                return@launch
+            if (freshLocation != null) {
+                gotAnyLocation = true
+                Log.d("WeatherViewModel", "Fresh location: $freshLocation")
+                currentLocationLat = freshLocation.latitude
+                currentLocationLon = freshLocation.longitude
+                getWeather(
+                    lat = freshLocation.latitude,
+                    lon = freshLocation.longitude,
+                    onWeatherLoaded = { weather ->
+                        currentLocationWeather = weather
+                        refreshCities()
+                    }
+                )
             }
 
-            Log.d("WeatherViewModel", "Location: $location")
-            currentLocationLat = location.latitude
-            currentLocationLon = location.longitude
-            getWeather(
-                lat = location.latitude,
-                lon = location.longitude,
-                onWeatherLoaded = { weather ->
-                    currentLocationWeather = weather
-                    refreshCities()
-                }
-            )
+            if (!gotAnyLocation) {
+                Log.e("WeatherViewModel.getCurrentLocation", "Both lastLocation and fresh fix failed")
+                _uiState.value = WeatherUiState.Error(WeatherError.LocationUnavailable)
+            }
         }
     }
 

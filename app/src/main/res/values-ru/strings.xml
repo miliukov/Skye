@@ -71,4 +71,13 @@
     <string name="settings_privacy_policy_link">Политика конфиденциальности</string>
 
     <string name="settings_app_version">Версия %1$s</string>
+
+    <string name="wind_direction_n">С</string>
+    <string name="wind_direction_ne">СВ</string>
+    <string name="wind_direction_e">В</string>
+    <string name="wind_direction_se">ЮВ</string>
+    <string name="wind_direction_s">Ю</string>
+    <string name="wind_direction_sw">ЮЗ</string>
+    <string name="wind_direction_w">З</string>
+    <string name="wind_direction_nw">СЗ</string>
 </resources>
