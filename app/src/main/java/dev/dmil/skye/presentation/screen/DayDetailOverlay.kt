@@ -1,7 +1,10 @@
 package dev.dmil.skye.presentation.screen
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -25,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,16 +38,25 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -64,7 +77,10 @@ import dev.dmil.skye.presentation.util.formatWindSpeed
 import java.time.format.TextStyle as DateTextStyle
 import kotlin.collections.mapIndexed
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import dev.dmil.skye.presentation.util.isCompactWidth
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
@@ -78,6 +94,37 @@ fun DayDetailOverlay(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier.fillMaxSize()) {
+        val scope = rememberCoroutineScope()
+        val offsetY = remember { Animatable(0f) }
+        var containerHeightPx by remember { mutableFloatStateOf(0f) }
+        val dismissThresholdPx = with(LocalDensity.current) { 120.dp.toPx() }
+
+        val scrimAlpha by remember {
+            derivedStateOf {
+                val progress = if (containerHeightPx > 0f) (offsetY.value / containerHeightPx).coerceIn(0f, 1f) else 0f
+                0.4f * (1f - progress)
+            }
+        }
+
+        fun dragBy(delta: Float) {
+            scope.launch { offsetY.snapTo((offsetY.value + delta).coerceAtLeast(0f)) }
+        }
+
+        suspend fun settleDrag() {
+            if (offsetY.value > dismissThresholdPx) {
+                offsetY.animateTo(
+                    targetValue = if (containerHeightPx > 0f) containerHeightPx else offsetY.value + 800f,
+                    animationSpec = tween(220, easing = FastOutSlowInEasing)
+                )
+                onDismiss()
+            } else {
+                offsetY.animateTo(
+                    0f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium)
+                )
+            }
+        }
+
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn(tween(200)),
@@ -87,7 +134,7 @@ fun DayDetailOverlay(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f))
+                    .background(Color.Black.copy(alpha = scrimAlpha))
                     .clickable(onClick = onDismiss)
             )
         }
@@ -104,9 +151,44 @@ fun DayDetailOverlay(
             if (days.isEmpty() || selectedIndex !in days.indices) return@AnimatedVisibility
             val day = days[selectedIndex]
 
+            LaunchedEffect(visible) {
+                if (visible) offsetY.snapTo(0f)
+            }
+
+            val nestedScrollConnection = remember {
+                object : NestedScrollConnection {
+                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                        if (offsetY.value > 0f && available.y < 0f) {
+                            val consumed = maxOf(available.y, -offsetY.value)
+                            dragBy(consumed)
+                            return Offset(0f, consumed)
+                        }
+                        return Offset.Zero
+                    }
+
+                    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                        if (available.y > 0f) {
+                            dragBy(available.y)
+                            return Offset(0f, available.y)
+                        }
+                        return Offset.Zero
+                    }
+
+                    override suspend fun onPreFling(available: Velocity): Velocity {
+                        if (offsetY.value > 0f) {
+                            settleDrag()
+                            return available
+                        }
+                        return Velocity.Zero
+                    }
+                }
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .onGloballyPositioned { containerHeightPx = it.size.height.toFloat() }
+                    .offset { IntOffset(0, offsetY.value.roundToInt()) }
                     .background(Black, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                     .padding(top = 12.dp, start = 16.dp, end = 16.dp)
             ) {
@@ -114,15 +196,11 @@ fun DayDetailOverlay(
                     modifier = Modifier
                         .fillMaxWidth()
                         .pointerInput(Unit) {
-                            var accumulatedDrag = 0f
                             detectVerticalDragGestures(
-                                onDragStart = { accumulatedDrag = 0f },
+                                onDragEnd = { scope.launch { settleDrag() } },
+                                onDragCancel = { scope.launch { settleDrag() } },
                                 onVerticalDrag = { change, dragAmount ->
-                                    accumulatedDrag += dragAmount
-                                    if (accumulatedDrag > 80f) {
-                                        onDismiss()
-                                        accumulatedDrag = 0f
-                                    }
+                                    dragBy(dragAmount)
                                     change.consume()
                                 }
                             )
@@ -138,10 +216,7 @@ fun DayDetailOverlay(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Row(
                             modifier = Modifier.horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -161,16 +236,8 @@ fun DayDetailOverlay(
 
                     val compact = isCompactWidth()
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            text = formatTemperature(day.maxTemp, units),
-                            fontSize = if (compact) 52.sp else 60.sp,
-                            color = White
-                        )
-                        Text(
-                            text = formatTemperature(day.minTemp, units),
-                            fontSize = if (compact) 44.sp else 50.sp,
-                            color = Gray
-                        )
+                        Text(text = formatTemperature(day.maxTemp, units), fontSize = if (compact) 52.sp else 60.sp, color = White)
+                        Text(text = formatTemperature(day.minTemp, units), fontSize = if (compact) 44.sp else 50.sp, color = Gray)
                     }
                 }
 
@@ -178,6 +245,7 @@ fun DayDetailOverlay(
                     modifier = Modifier
                         .weight(1f)
                         .navigationBarsPadding()
+                        .nestedScroll(nestedScrollConnection)
                         .verticalScroll(rememberScrollState())
                 ) {
                     DayTemperatureGraph(hourly = day.hourly, units = units)

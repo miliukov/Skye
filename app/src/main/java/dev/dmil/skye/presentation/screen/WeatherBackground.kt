@@ -28,8 +28,8 @@ fun WeatherConditionBackground(icon: String, modifier: Modifier = Modifier) {
     when {
         icon.startsWith("09") || icon.startsWith("10") || icon.startsWith("11") ->
             RainBackground(modifier)
-        icon.startsWith("02") || icon.startsWith("03") || icon.startsWith("04") ->
-            CloudyBackground(modifier)
+        // icon.startsWith("02") || icon.startsWith("03") || icon.startsWith("04") ->
+            // CloudyBackground(modifier)
         icon == "01n" -> ClearNightBackground(modifier)
         else -> Unit
     }

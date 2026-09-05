@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +30,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -299,23 +300,43 @@ fun CitySearchBar(
             expanded = results.isNotEmpty(),
             onDismissRequest = onDismiss,
             properties = PopupProperties(focusable = false),
+            containerColor = Black,
+            shape = RoundedCornerShape(16.dp),
+            shadowElevation = 0.dp,
             modifier = Modifier
                 .fillMaxWidth(0.9f)
-                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
+                .border(1.dp, Gray.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
         ) {
-            results.forEach { result ->
+            results.forEachIndexed { index, result ->
                 val subtitle = listOfNotNull(result.state, result.countryCode)
                     .filter { it.isNotBlank() }
                     .joinToString(", ")
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = if (subtitle.isBlank()) result.city else "${result.city}, $subtitle",
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    },
-                    onClick = { onResultClick(result) }
-                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onResultClick(result) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = Orange,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(text = result.city, color = White, fontSize = 16.sp)
+                        if (subtitle.isNotBlank()) {
+                            Text(text = subtitle, color = Gray, fontSize = 13.sp)
+                        }
+                    }
+                }
+
+                if (index != results.lastIndex) {
+                    HorizontalDivider(color = Gray.copy(alpha = 0.12f), thickness = 0.5.dp)
+                }
             }
         }
     }
